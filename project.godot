@@ -12,6 +12,10 @@ config/tags=PackedStringArray("arpg", "desktop", "idle")
 run/main_scene="res://ui/MainWindow.tscn"
 run/max_fps=30
 
+[autoload]
+
+GameAutoload="*res://autoload/Game.gd"
+
 [display]
 
 window/size/viewport_width=360
