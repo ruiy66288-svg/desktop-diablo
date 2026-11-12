@@ -1,0 +1,33 @@
+# 《桌面破坏神》WP-A2 锚点提示词卡 #4: 装备底材图标锚点 — 铁誓覆面盔 (头盔槽 helm)
+# 依据: docs/03 §02.4 & §06 | docs/04 §3 & §4.1 | docs/verification_log.md [风格方向板 v1] 纠偏 1–5
+asset_id: anchor_04_icon_helm_greathelm
+target_export_name: eq_helm_base_greathelm_v01.png
+category: icon
+slot: helm
+accent_family: abyss
+accent_hex: "#6A1B3A"
+gilding_hex: "#C9A04E"
+default_mode: anchor
+model: gpt-image-2.6-flare
+quality: high
+size: "1024x1024"
+master_output_size: "96x96"
+view_rule: "front three-quarter (3/4) view, faceplate angled toward the front-left, centered"
+wealth_motif: "small geometric gold-leaf padlock nose-bridge rivet clasp"
+
+subject_prompt: >-
+  Square 1:1 icon composition. A single forged iron knightly great helm armor base item, shown in a front
+  three-quarter (3/4) view with the visor faceplate oriented toward the front-left, centered and occupying
+  about 82% of the square frame. Render as an extra-bold coarse relief woodcut print icon: thick closed deep
+  ink-black outer contour, stark solid ink-black T-shaped visor eye slits and right-side cheek shadow (35% to
+  48% black mass), and flat warm bone-white lit crown and left cheek plate under upper-left 45-degree lighting.
+  All forged iron plates of the helmet are represented exclusively by bold, wide-spaced horizontal parallel
+  woodcut chisel gouge strokes—strictly zero smooth metallic airbrushing. Wealth motif: a small geometric
+  gold-leaf padlock-shaped rivet clasp on the nasal bridge (under 6% area), paired with one tiny muted
+  burgundy-ink brow cabochon inlay above the visor (under 5% area).
+
+hard_constraints: >-
+  Completely flat, uniform medium gray (#808080) background with nothing else—strictly NO icon frame, NO
+  border, NO bone-white paper background, NO glow. Strictly NO spherical mobile-game metal highlights, NO
+  smooth gray gradients on the helmet dome, and NO fine copperplate cross-hatching that would turn gray at
+  48x48 or 28x28 display sizes. Strictly ZERO text, letters, numbers, runes, heraldic inscriptions, or symbols.

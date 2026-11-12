@@ -1,0 +1,34 @@
+# 《桌面破坏神》WP-A2 锚点提示词卡 #3: 装备底材图标锚点 — 阔刃断债剑 (武器槽 weapon)
+# 依据: docs/03 §02.4 & §06 | docs/04 §3 & §4.1 | docs/verification_log.md [风格方向板 v1] 纠偏 1–5
+asset_id: anchor_03_icon_weapon_sword
+target_export_name: eq_weapon_base_broadsword_v01.png
+category: icon
+slot: weapon
+accent_family: demon
+accent_hex: "#7A0F14"
+gilding_hex: "#C9A04E"
+default_mode: anchor
+model: gpt-image-2.6-flare
+quality: high
+size: "1024x1024"
+master_output_size: "96x96"
+view_rule: "45-degree diagonal from bottom-left pommel to top-right blade tip, spanning ~85% of diagonal"
+wealth_motif: "small gold-leaf coin-scale clasp set into the center of the crossguard"
+
+subject_prompt: >-
+  Square 1:1 icon composition. A single heavy medieval broadsword weapon base item, placed diagonally at a
+  45-degree angle from the pommel at the bottom-left to the broad blade point at the top-right, centered and
+  covering about 85% of the diagonal (occupying roughly 82% of the square frame). Render as an extra-bold
+  coarse relief woodcut print icon with a thick closed deep ink-black outer contour, stark flat bone-white
+  upper-left lit blade bevel, and solid ink-black lower-right fuller and shadow bevel (35% to 45% black mass).
+  All steel and iron surfaces of the blade, straight crossguard, and heavy wheel pommel are depicted strictly
+  by bold, wide-spaced parallel woodcut chisel gouge bands—zero smooth tonal gradients. A tiny gold-leaf
+  gilding motif is limited to a geometric coin-shaped rivet clasp at the center of the crossguard (under 6%
+  area), and a single small muted crimson-ink faceted pommel stone provides the tiny accent (under 5% area).
+
+hard_constraints: >-
+  Completely flat, uniform medium gray (#808080) background with nothing else—strictly NO square slot frame,
+  NO border, NO bone-white paper backdrop, NO drop shadow, NO aura or sparkles. Every woodcut stroke must be
+  extra-thick so the sword silhouette and fuller remain razor-clear when downsampled to 48x48 equipment slot
+  and 28x28 ground loot icon sizes without turning muddy gray. Strictly NO smooth mobile-game metallic
+  gradients, NO shiny specular highlights, and ZERO runes, engravings of letters, text, or symbols on the blade.

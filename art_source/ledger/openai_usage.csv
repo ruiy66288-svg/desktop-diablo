@@ -1,0 +1,3 @@
+timestamp,asset_id,model,quality,size,request_hash,input_tokens,output_tokens,est_cost_usd,file
+2026-11-12T22:37:01,style_board_v1,gpt-image-2.6-flare,high,1536x1024,d7a4d440f0b031b7,486,1353,0.043,f:\挂机游戏制作\art_source\raw\style_board_v1\gen_d7a4d440f0b031b7.png
+2026-11-12T22:51:25,mon_demon_debt_test,gpt-image-2.6-flare,low,1024x1024,test_sample_02,179,824,0.025615,f:\挂机游戏制作\art_source\raw\test_sample\test_demon_flare_low.png
