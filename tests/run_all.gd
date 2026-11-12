@@ -13,6 +13,7 @@ const TestAffixResolver = preload("res://tests/test_affix_resolver.gd")
 const TestCredit = preload("res://tests/test_credit.gd")
 const TestTechTree = preload("res://tests/test_tech_tree.gd")
 const TestTollMechanics = preload("res://tests/test_toll_mechanics.gd")
+const TestD6PrestigeSave = preload("res://tests/test_d6_prestige_save.gd")
 
 func _init() -> void:
 	print("==================================================")
@@ -70,6 +71,11 @@ func _init() -> void:
 	# 7d. WP-15: 第 100 层门票 / 储蓄托管 / 护盾机制
 	total_count += 1
 	if TestTollMechanics.run():
+		passed_count += 1
+
+	# 7e. WP-16/17: 灵魂转生、存档读档、离线结算
+	total_count += 1
+	if TestD6PrestigeSave.run():
 		passed_count += 1
 
 	# 8. WP-04 (自动接入): 若 res://tests/test_curve_sim.gd 存在则执行

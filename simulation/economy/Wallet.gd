@@ -111,16 +111,16 @@ func add_income(amount_log: float, balance: BalanceScript, stage: int = 1, save_
 		else:
 			gold = NumScript.add(gold, amount_log)
 
+## 转生时未还清活跃债务折算出的宿债时长（分钟，Q35：m = debt / I_expected(转生时层数)），无负债返回 0
+func get_prestige_legacy_minutes(stage: int, balance: BalanceScript) -> float:
+	if debt_total == NumScript.ZERO:
+		return 0.0
+	var exp_inc_log: float = balance.get_expected_income_per_min_log(maxi(1, stage))
+	return pow(10.0, clampf(NumScript.div(debt_total, exp_inc_log), -MINUTES_LOG_CLAMP, MINUTES_LOG_CLAMP))
+
 ## 转生时将未还清的活跃债务按当前层期望收入折算为跨周目宿债时长 (Q35)
 func settle_prestige_debt_to_legacy(stage: int, balance: BalanceScript) -> float:
-	if debt_total != NumScript.ZERO:
-		var ref_stage: int = maxi(1, stage)
-		var exp_inc_log: float = balance.get_expected_income_per_min_log(ref_stage)
-		var added_minutes: float = pow(
-			10.0,
-			clampf(NumScript.div(debt_total, exp_inc_log), -MINUTES_LOG_CLAMP, MINUTES_LOG_CLAMP)
-		)
-		legacy_debt_minutes += added_minutes
+	legacy_debt_minutes += get_prestige_legacy_minutes(stage, balance)
 	debt_total = NumScript.ZERO
 	credit.active_loan = false
 	credit.borrowed_principal_log = NumScript.ZERO

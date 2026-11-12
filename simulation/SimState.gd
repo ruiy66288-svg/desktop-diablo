@@ -348,6 +348,24 @@ func recalculate_stats() -> void:
 	stats.unique_mults_sum_log = total_unique_log
 	stats.soul_mult_log = balance.get_soul_mult_log(souls)
 
+## 灵魂转生预览（只读）：可获灵魂、转生后灵魂储备、未还债务将折算的宿债时长、保留装备数 (§1.4、Q19、Q35)
+func get_soul_prestige_preview() -> Dictionary:
+	var gain_log: float = balance.get_pending_souls_log(run_best, marks)
+	var added_minutes: float = wallet.get_prestige_legacy_minutes(maxi(1, current_stage), balance)
+	var kept: int = 0
+	for slot_key: String in EQUIP_SLOTS:
+		if equipped.get(slot_key, null) != null:
+			kept += 1
+	return {
+		"can_prestige": gain_log != NumScript.ZERO,
+		"run_best": run_best,
+		"pending_souls_log": gain_log,
+		"souls_after_log": NumScript.add(souls, gain_log) if gain_log != NumScript.ZERO else souls,
+		"legacy_debt_added_minutes": added_minutes,
+		"legacy_debt_total_minutes": legacy_debt_minutes + added_minutes,
+		"kept_equipped_count": kept
+	}
+
 ## 执行第一层灵魂转生：结算宿债时长、累加灵魂、保留身上 6 件装备、重置层数与金币 (§1.4 & Q19 & Q35)
 func perform_soul_prestige() -> float:
 	var earned_souls_log: float = balance.get_pending_souls_log(run_best, marks)
@@ -405,6 +423,7 @@ func _reset_run_progress(_keep_equipped: bool) -> void:
 	mob_shield_max_log = NumScript.ZERO
 	mob_shield_cur_log = NumScript.ZERO
 	mob_shield_strip_cap_log = NumScript.ZERO
+	buffs.clear()
 	upgrades.reset_levels()
 
 ## 派生事件超出最大深度时的溢出保底奖励 (§2.3)
@@ -414,6 +433,10 @@ func overflow_reward(_ev: Variant) -> void:
 
 ## 生成包含全部核心字段与三条独立 RNG 种子流的确定性 SHA-256 状态哈希 (WP-03 验收基准)
 func compute_state_hash() -> String:
+	return "|".join(get_hash_parts()).sha256_text()
+
+## 状态哈希的规范化分段（供测试定位分叉字段）
+func get_hash_parts() -> PackedStringArray:
 	var parts: PackedStringArray = PackedStringArray()
 	parts.append("stages:%d,%d,%d,%d" % [all_time_best, run_best, current_stage, farm_stage])
 	parts.append("econ:%.12f,%.12f,%.8f,%.12f,%.12f,%d" % [
@@ -460,8 +483,7 @@ func compute_state_hash() -> String:
 		var inv_item: ItemInstanceScript = inventory.get_item_at(idx)
 		parts.append("i%d:%d,%.8f" % [idx, inv_item.uid, inv_item.score])
 
-	var canonical: String = "|".join(parts)
-	return canonical.sha256_text()
+	return parts
 
 ## 深拷贝完整模拟状态（供 DryRun 30s 干跑与 OfflineCalc 60s 采样校准使用）
 func clone() -> SimState:

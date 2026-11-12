@@ -122,6 +122,9 @@ func apply_command(cmd: CommandScript, state: RefCounted, event_queue: EventQueu
 			return false
 
 		CommandScript.Type.SOUL_PRESTIGE:
+			var preview: Dictionary = state.call("get_soul_prestige_preview") as Dictionary
+			if not bool(preview.get("can_prestige", false)):
+				return false   # 无可获灵魂时拒绝转生，避免白白清空进度
 			state.call("perform_soul_prestige")
 			return true
 

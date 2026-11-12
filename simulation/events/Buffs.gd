@@ -82,6 +82,35 @@ func get_signature() -> String:
 		parts.append("%s:%d:%d" % [b.key, b.current_stacks, b.remaining_ticks])
 	return ",".join(parts)
 
+## 存档导出：每个 buff 一条 Dictionary（val_per_stack 以普通 float 存储，JSON 可表示）
+func to_array() -> Array:
+	var keys: Array = _active_buffs.keys()
+	keys.sort()
+	var out: Array = []
+	for key_var: Variant in keys:
+		var b: BuffInstance = _active_buffs[key_var] as BuffInstance
+		out.push_back({
+			"key": b.key, "remaining_ticks": b.remaining_ticks, "stacks": b.current_stacks,
+			"max_stacks": b.max_stacks, "stat": b.stat, "val_per_stack": b.val_per_stack,
+			"charges": b.charges, "hint": b.hint.duplicate()
+		})
+	return out
+
+func load_from_array(data: Array) -> void:
+	_active_buffs.clear()
+	for item_var: Variant in data:
+		var d: Dictionary = item_var as Dictionary
+		var b: BuffInstance = BuffInstance.new()
+		b.key = String(d.get("key", ""))
+		b.remaining_ticks = int(d.get("remaining_ticks", 0))
+		b.current_stacks = int(d.get("stacks", 1))
+		b.max_stacks = int(d.get("max_stacks", 1))
+		b.stat = String(d.get("stat", ""))
+		b.val_per_stack = float(d.get("val_per_stack", 0.0))
+		b.charges = int(d.get("charges", 0))
+		b.hint = (d.get("hint", {}) as Dictionary).duplicate()
+		_active_buffs[b.key] = b
+
 func clone() -> Buffs:
 	var copy: Buffs = (get_script() as GDScript).new() as Buffs
 	for key_var: Variant in _active_buffs.keys():

@@ -162,6 +162,19 @@ func _build_item_name(slot_idx: int, rarity_idx: int) -> String:
 	var r_idx: int = clampi(rarity_idx, 0, RARITY_PREFIXES.size() - 1)
 	return RARITY_PREFIXES[r_idx] + "之" + SLOT_DISPLAY_NAMES[s_idx]
 
+## 存档导出/导入（保底计数器与 uid 发号器，WP-17）
+func export_state() -> Dictionary:
+	return {
+		"pity_counter": _unique_pity_counter,
+		"first_run_pity_triggered": _first_run_pity_triggered,
+		"next_uid": _next_uid
+	}
+
+func import_state(data: Dictionary) -> void:
+	_unique_pity_counter = int(data.get("pity_counter", 0))
+	_first_run_pity_triggered = bool(data.get("first_run_pity_triggered", false))
+	_next_uid = maxi(1, int(data.get("next_uid", 1)))
+
 func clone() -> LootRoller:
 	var copy: LootRoller = (get_script() as GDScript).new() as LootRoller
 	copy._unique_pity_counter = _unique_pity_counter

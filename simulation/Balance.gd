@@ -153,6 +153,7 @@ static func reload_default() -> Resource:
 @export var tech_queue_max_slots: int = 5              # 来源: 02号文件 §0 Q27 & §5.3 — 研究队列容量上限 5 格
 @export var auto_buy_max_per_tick: int = 16            # 来源: 02号文件 §5.3 自动化分支 — 自动购买金币升级每 tick 最多购买级数 (防单 tick 爆循环)
 @export var tech_deep_unlock_tier: int = 5             # 来源: 02号文件 §5.3 — 深渊印记解锁第 5 层以后深层节点
+@export var offline_sample_seconds: float = 60.0       # 来源: 02号文件 §3.4 第 7 条 & §2.1 — 离线结算 60 秒校准采样窗口
 @export var offline_cap_base_hours: float = 8.0        # 来源: 02号文件 §0 Q5 & §3.4 — 默认离线收益上限 8 小时
 @export var offline_cap_max_hours: float = 24.0        # 来源: 02号文件 §0 Q5 & §3.4 & §5.3 — 升级后离线收益上限 24 小时
 
