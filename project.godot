@@ -1,0 +1,28 @@
+; Engine configuration file.
+; It's best edited using the editor UI and not directly,
+; but can be edited here as well.
+
+config_version=5
+
+[application]
+
+config/name="桌面破坏神"
+config/description="桌面常驻「暗黑爆装 × 纯数值增量」无限挂机游戏"
+config/tags=PackedStringArray("arpg", "desktop", "idle")
+run/main_scene="res://ui/MainWindow.tscn"
+run/max_fps=30
+
+[display]
+
+window/size/viewport_width=360
+window/size/viewport_height=480
+window/size/borderless=true
+window/size/always_on_top=true
+window/size/transparent=true
+window/per_pixel_transparency/allowed=true
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+viewport/transparent_background=true

@@ -1,0 +1,32 @@
+# 环境变量与敏感密钥（严禁入库）
+.env
+*.env
+.env.*
+
+# Godot 4 编辑器与导入缓存
+.godot/
+*.translation
+
+# 存档临时文件与本地导出包
+*.tmp
+builds/
+export/
+
+# Python 运行与测试缓存
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# Node.js 依赖缓存（仅 PixelFX 导出工具用）
+node_modules/
+
+# 系统缩略图与临时文件
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# 第三方原始未加工素材（防止二次分发版权限制，保留目录占位 .gitignore）
+art_source/thirdparty_raw/*
+!art_source/thirdparty_raw/.gitignore

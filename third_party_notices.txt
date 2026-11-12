@@ -1,0 +1,24 @@
+================================================================================
+THIRD-PARTY SOFTWARE NOTICES AND LICENSES
+《桌面破坏神》第三方开源软件与素材使用声明
+================================================================================
+
+1. PixelFX (Core Effect Logic)
+   - Source: https://github.com/patch-gg/pixelfx
+   - License: MIT License
+   - Copyright:
+     Copyright (c) 2026 Patch
+     Copyright (c) 2026 Hugo Duprez
+     Adapted from Sprite Fusion (Hugo Duprez, MIT)
+     Adapted from Hollow Crown (rehan-remade, MIT)
+   - Note: The font 'PatchPixel' located in gallery/fonts is strictly excluded
+     from this project and is not distributed under this MIT license.
+
+--------------------------------------------------------------------------------
+
+2. Noto Serif SC (Google Fonts)
+   - Source: https://fonts.google.com/noto/specimen/Noto+Serif+SC
+   - License: SIL Open Font License 1.1 (OFL)
+   - Copyright (c) 2021 Adobe (http://www.adobe.com/), with Reserved Font Name 'Source'.
+
+================================================================================
