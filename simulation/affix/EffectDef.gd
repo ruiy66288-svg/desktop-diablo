@@ -1,0 +1,76 @@
+class_name EffectDef extends Resource
+
+## 词条效果执行定义 (依据《02_系统架构与数值_v6.md》§2.3–§2.4 & §6.2)
+
+const SimEventScript = preload("res://simulation/events/SimEvent.gd")
+const BuffsScript = preload("res://simulation/events/Buffs.gd")
+const NumScript = preload("res://core/num/Num.gd")
+
+@export var vfx_key: String = ""
+@export var emit_event_type: SimEventScript.T = SimEventScript.T.HIT
+@export var should_emit_event: bool = true
+
+@export var damage_mult: float = 1.0
+@export var damage_pct_max_hp: float = 0.0
+@export var boss_max_hp_pct_scale: float = 0.25
+@export var splash_count: int = 0
+@export var splash_decay: float = 0.8
+
+@export var apply_buff_key: String = ""
+@export var buff_duration_ticks: int = 0
+@export var buff_max_stacks: int = 1
+@export var buff_stat: String = ""
+@export var buff_val_per_stack: float = 0.0
+
+## 执行词条效果，返回派生出的 SimEvent 数组
+func execute(ev: SimEventScript, state: RefCounted, _rolls: Dictionary = {}) -> Array[SimEventScript]:
+	var out_events: Array[SimEventScript] = []
+
+	if not apply_buff_key.is_empty() and state != null and state.get("buffs") != null:
+		var buffs_mgr: BuffsScript = state.get("buffs") as BuffsScript
+		if buffs_mgr != null:
+			buffs_mgr.add_buff(
+				apply_buff_key,
+				buff_duration_ticks,
+				buff_max_stacks,
+				buff_stat,
+				buff_val_per_stack,
+				{"vfx_key": vfx_key}
+			)
+
+	if should_emit_event:
+		var base_dmg_log: float = ev.value
+		if damage_pct_max_hp > 0.0 and state != null:
+			var max_hp_log: float = float(state.get("mob_max_hp_log"))
+			var pct: float = damage_pct_max_hp
+			if bool(state.get("is_boss")):
+				pct *= boss_max_hp_pct_scale
+			base_dmg_log = max_hp_log + NumScript.from_float(pct)
+		elif damage_mult != 1.0:
+			base_dmg_log += NumScript.from_float(damage_mult)
+
+		var primary_ev: SimEventScript = SimEventScript.new(emit_event_type, base_dmg_log, 1)
+		primary_ev.hint = {
+			"vfx_key": vfx_key,
+			"damage_mult": damage_mult,
+			"source_ev_type": int(ev.type)
+		}
+		if ev.payload.has("rarity"):
+			primary_ev.hint["rarity"] = ev.payload["rarity"]
+
+		out_events.push_back(primary_ev)
+
+		if splash_count > 0:
+			var cur_dmg_log: float = base_dmg_log
+			for i in range(1, splash_count + 1):
+				cur_dmg_log += NumScript.from_float(splash_decay)
+				var splash_ev: SimEventScript = SimEventScript.new(emit_event_type, cur_dmg_log, 1)
+				splash_ev.hint = {
+					"vfx_key": vfx_key,
+					"is_splash": true,
+					"jump_index": i,
+					"decay": splash_decay
+				}
+				out_events.push_back(splash_ev)
+
+	return out_events
