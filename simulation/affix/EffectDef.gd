@@ -5,6 +5,7 @@ class_name EffectDef extends Resource
 const SimEventScript = preload("res://simulation/events/SimEvent.gd")
 const BuffsScript = preload("res://simulation/events/Buffs.gd")
 const NumScript = preload("res://core/num/Num.gd")
+const StatSheetScript = preload("res://simulation/StatSheet.gd")
 
 @export var vfx_key: String = ""
 @export var emit_event_type: SimEventScript.T = SimEventScript.T.HIT
@@ -40,6 +41,14 @@ func execute(ev: SimEventScript, state: RefCounted, _rolls: Dictionary = {}) -> 
 
 	if should_emit_event:
 		var base_dmg_log: float = ev.value
+		var src_is_damage: bool = (
+			ev.type == SimEventScript.T.HIT
+			or ev.type == SimEventScript.T.CRIT
+			or ev.type == SimEventScript.T.METEOR
+		)
+		if not src_is_damage and state != null and state.get("stats") != null:
+			# 非伤害类触发源（掉落/熔炼/击杀）：以玩家当前单次基础命中伤害为基准 (§6.2 品质系数 × 单次伤害)
+			base_dmg_log = (state.get("stats") as StatSheetScript).get_base_hit_damage_log()
 		if damage_pct_max_hp > 0.0 and state != null:
 			var max_hp_log: float = float(state.get("mob_max_hp_log"))
 			var pct: float = damage_pct_max_hp

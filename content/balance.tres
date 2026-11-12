@@ -112,3 +112,7 @@ mech_gold_eat_income_cap = 0.5 ; 来源: 02号文件 §7.1 (500–599 层吞金�
 wall_signal_fail_streak = 5 ; 来源: 02号文件 §7.2 (连续 5 次 Boss 失败触发卡墙提示)
 toll_expected_income_minutes = 30.0 ; 来源: 02号文件 §7.3 & Q32 (门票价格 = 30 分钟期望收入)
 toll_saving_lead_stages = 5 ; 来源: 02号文件 §7.3 & Q36 (门前 5 层以内开启储蓄托管)
+; --- 9. 换装干跑 DryRun (来源: 02号文件 §0 Q14 & §2.1) ---
+dry_run_seconds = 30.0 ; 来源: 02号文件 §0 Q14 (克隆 Sim 干跑 30 秒)
+dry_run_default_seed = 987654321 ; 来源: 02号文件 §2.1 (干跑默认确定性种子)
+dry_run_display_cap_log = 5.0 ; 来源: 02号文件 §0 Q14 (Δ% 展示上限 10^5)

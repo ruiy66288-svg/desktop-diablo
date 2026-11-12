@@ -8,6 +8,9 @@ const CommandScript = preload("res://simulation/commands/Command.gd")
 const CommandQueueScript = preload("res://simulation/commands/CommandQueue.gd")
 const CombatScript = preload("res://simulation/combat/Combat.gd")
 const EventQueueScript = preload("res://simulation/events/EventQueue.gd")
+const SimEventScript = preload("res://simulation/events/SimEvent.gd")
+const EventCompactorScript = preload("res://simulation/events/EventCompactor.gd")
+const AffixResolverScript = preload("res://simulation/events/AffixResolver.gd")
 const NumScript = preload("res://core/num/Num.gd")
 
 const TICK_EPS: float = 1e-9
@@ -56,6 +59,8 @@ func step() -> int:
 	state.tick_count += 1
 	state.elapsed_seconds += tick_dt
 	_last_step_kills = combat.step_tick(tick_dt, state, queue)
+	_last_step_kills += _run_affix_pipeline()
+	state.buffs.tick()
 
 	if state.elapsed_seconds > 0.0:
 		var pending_souls: float = state.balance.get_pending_souls_log(state.run_best, state.marks)
@@ -65,6 +70,27 @@ func step() -> int:
 
 	queue.compact_same_type(state.balance.event_compact_threshold)
 	return _last_step_kills
+
+## 词条管线：仅在身上有反应型词条时启用（零词条零开销，保证既有哈希不变）
+## 流程：Resolver 处理本 tick 事件 → 已处理事件带 resolved 标记回填队列（表现层照常消费）→ 派生伤害真实结算
+func _run_affix_pipeline() -> int:
+	var resolver: AffixResolverScript = state.resolver
+	if resolver == null or not resolver.has_listeners():
+		return 0
+
+	resolver.collect_processed = true
+	resolver.resolve_tick(state, queue, null)
+
+	for done_ev: SimEventScript in resolver.processed_log:
+		done_ev.hint[EventCompactorScript.RESOLVED_HINT_KEY] = true
+		queue.push_back(done_ev)
+
+	var derived_kills: int = 0
+	for dmg_ev: SimEventScript in resolver.derived_damage_events:
+		if dmg_ev.value != NumScript.ZERO:
+			derived_kills += combat.apply_derived_damage(dmg_ev.value, state, queue)
+	resolver.derived_damage_events.clear()
+	return derived_kills
 
 ## 外部传入真实帧间隔 delta 驱动时钟；最多追赶 max_catchup_ticks (50) 个 tick，返回本次执行的 tick 数
 func advance(delta: float) -> int:

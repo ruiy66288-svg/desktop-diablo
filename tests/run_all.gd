@@ -59,18 +59,33 @@ func _init() -> void:
 		var curve_test_script: GDScript = ResourceLoader.load("res://tests/test_curve_sim.gd") as GDScript
 		if curve_test_script != null:
 			total_count += 1
-			var ok_curve: bool = bool(curve_test_script.call("run"))
-			if ok_curve:
-				passed_count += 1
+			if not curve_test_script.can_instantiate():
+				printerr("[TestRunner] 可选测试脚本编译失败，计为未通过: " + curve_test_script.resource_path)
+			else:
+				if bool(curve_test_script.call("run")):
+					passed_count += 1
 
 	# 9. WP-07 (自动接入): 若 res://tests/test_desktop_window.gd 存在则执行
 	if ResourceLoader.exists("res://tests/test_desktop_window.gd"):
 		var desktop_test_script: GDScript = ResourceLoader.load("res://tests/test_desktop_window.gd") as GDScript
 		if desktop_test_script != null:
 			total_count += 1
-			var ok_desktop: bool = bool(desktop_test_script.call("run"))
-			if ok_desktop:
-				passed_count += 1
+			if not desktop_test_script.can_instantiate():
+				printerr("[TestRunner] 可选测试脚本编译失败，计为未通过: " + desktop_test_script.resource_path)
+			else:
+				if bool(desktop_test_script.call("run")):
+					passed_count += 1
+
+	# 10. WP-11 (自动接入): 若 res://tests/test_vfx_affixes.gd 存在则执行
+	if ResourceLoader.exists("res://tests/test_vfx_affixes.gd"):
+		var vfx_test_script: GDScript = ResourceLoader.load("res://tests/test_vfx_affixes.gd") as GDScript
+		if vfx_test_script != null:
+			total_count += 1
+			if not vfx_test_script.can_instantiate():
+				printerr("[TestRunner] 可选测试脚本编译失败，计为未通过: " + vfx_test_script.resource_path)
+			else:
+				if bool(vfx_test_script.call("run")):
+					passed_count += 1
 
 	print("--------------------------------------------------")
 	if passed_count == total_count:

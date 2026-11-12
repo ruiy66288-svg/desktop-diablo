@@ -131,6 +131,8 @@ func _init_empty_equip_slots() -> void:
 	equipped.clear()
 	for slot_key: String in EQUIP_SLOTS:
 		equipped[slot_key] = null
+	equip_slots.equipped.clear()
+	resolver.clear_listeners()
 
 ## 将外部只写指令压入权威队列，等待下一 tick 起始处确定性结算
 func push_command(cmd: CommandScript) -> void:
@@ -257,6 +259,20 @@ func equip_item(item: ItemInstanceScript) -> ItemInstanceScript:
 	var prev: ItemInstanceScript = equipped.get(slot_key, null) as ItemInstanceScript
 	equipped[slot_key] = item
 	equip_slots.equipped[int(item.slot)] = item
+	if not item.affixes.is_empty() or (prev != null and not prev.affixes.is_empty()):
+		# 含词条装备：重建反应型词条监听器并结算被动词条 (WP-10/12)
+		equip_slots.recalculate_and_apply(self)
+	recalculate_stats()
+	return prev
+
+## 卸下指定槽位装备并重算，返回被卸下的装备（无则 null）
+func unequip_slot(slot_key: String) -> ItemInstanceScript:
+	var prev: ItemInstanceScript = equipped.get(slot_key, null) as ItemInstanceScript
+	if prev == null:
+		return null
+	equipped[slot_key] = null
+	equip_slots.equipped.erase(int(prev.slot))
+	equip_slots.recalculate_and_apply(self)
 	recalculate_stats()
 	return prev
 
@@ -384,6 +400,8 @@ func compute_state_hash() -> String:
 			parts.append("eq_%s:null" % slot_key)
 		else:
 			parts.append("eq_%s:%d,%.8f" % [slot_key, eq_item.uid, eq_item.score])
+	if not buffs.is_empty():
+		parts.append("buffs:%s" % buffs.get_signature())
 	parts.append("inv:%d" % inventory.get_count())
 	for idx: int in range(inventory.get_count()):
 		var inv_item: ItemInstanceScript = inventory.get_item_at(idx)
@@ -427,6 +445,7 @@ func clone() -> SimState:
 	copy.filter = filter.clone()
 	copy.loot_roller = loot_roller.clone()
 	copy.upgrades = upgrades.clone()
+	copy.buffs = buffs.clone()
 	for slot_key: String in EQUIP_SLOTS:
 		var eq_item: ItemInstanceScript = equipped.get(slot_key, null) as ItemInstanceScript
 		if eq_item != null:

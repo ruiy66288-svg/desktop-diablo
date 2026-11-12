@@ -34,7 +34,8 @@ func step_tick(dt: float, state: SimStateScript, queue: EventQueueScript) -> int
 			return 0
 
 	# 3. 攻速充能与本 tick 攻击次数计算（读取 Balance 参数，零硬编码）
-	var interval: float = maxf(state.balance.min_atk_interval, state.stats.atk_interval)
+	var speed_bonus: float = state.buffs.get_stat_bonus("atk_speed_pct") if state.buffs != null else 0.0
+	var interval: float = maxf(state.balance.min_atk_interval, state.stats.atk_interval / (1.0 + speed_bonus))
 	state.atk_progress += dt / interval
 	var attacks: int = int(floor(state.atk_progress))
 	state.atk_progress -= float(attacks)
@@ -81,6 +82,10 @@ func step_tick(dt: float, state: SimStateScript, queue: EventQueueScript) -> int
 		)
 
 	return kills_this_tick
+
+## 结算词条派生伤害（连锁闪电/落地即爆等）：真实扣减当前怪血量，受单 tick 击杀上限约束，返回击杀数
+func apply_derived_damage(dmg_log: float, state: SimStateScript, queue: EventQueueScript) -> int:
+	return _apply_hit_damage(dmg_log, false, 1, state, queue, 0, state.balance.max_kills_per_tick)
 
 ## 执行伤害扣减与溢出伤害穿透到下一只怪（受单 tick 击杀上限 max_kills 约束）
 func _apply_hit_damage(

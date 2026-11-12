@@ -68,3 +68,32 @@ func tick() -> void:
 
 func clear() -> void:
 	_active_buffs.clear()
+
+func is_empty() -> bool:
+	return _active_buffs.is_empty()
+
+## 确定性签名（按 key 排序），供 SimState 状态哈希使用
+func get_signature() -> String:
+	var keys: Array = _active_buffs.keys()
+	keys.sort()
+	var parts: PackedStringArray = PackedStringArray()
+	for key_var: Variant in keys:
+		var b: BuffInstance = _active_buffs[key_var] as BuffInstance
+		parts.append("%s:%d:%d" % [b.key, b.current_stacks, b.remaining_ticks])
+	return ",".join(parts)
+
+func clone() -> Buffs:
+	var copy: Buffs = (get_script() as GDScript).new() as Buffs
+	for key_var: Variant in _active_buffs.keys():
+		var src: BuffInstance = _active_buffs[key_var] as BuffInstance
+		var dst: BuffInstance = BuffInstance.new()
+		dst.key = src.key
+		dst.remaining_ticks = src.remaining_ticks
+		dst.current_stacks = src.current_stacks
+		dst.max_stacks = src.max_stacks
+		dst.stat = src.stat
+		dst.val_per_stack = src.val_per_stack
+		dst.charges = src.charges
+		dst.hint = src.hint.duplicate()
+		copy._active_buffs[key_var] = dst
+	return copy

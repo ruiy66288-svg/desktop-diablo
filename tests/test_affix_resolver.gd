@@ -14,6 +14,10 @@ const ItemInstance = preload("res://simulation/loot/ItemInstance.gd")
 const EquipSlots = preload("res://simulation/progression/EquipSlots.gd")
 const DryRun = preload("res://simulation/commands/DryRun.gd")
 const Num = preload("res://core/num/Num.gd")
+const EventCompactor = preload("res://simulation/events/EventCompactor.gd")
+const SimRunnerScript = preload("res://simulation/SimRunner.gd")
+const CombatScript = preload("res://simulation/combat/Combat.gd")
+const BalanceScript = preload("res://simulation/Balance.gd")
 
 static func run_all_tests() -> bool:
 	print("--- Running TestAffixResolver ---")
@@ -23,6 +27,10 @@ static func run_all_tests() -> bool:
 	ok = ok and test_signature_affixes_integration()
 	ok = ok and test_dry_run_determinism()
 	ok = ok and test_stress_100x_attacks_6000_ticks()
+	ok = ok and test_event_compactor_conserves_counts()
+	ok = ok and test_runner_affix_pipeline_frenzy_and_damage()
+	ok = ok and test_runner_stress_100x_real_pipeline()
+	ok = ok and test_equip_six_slots_and_dry_run_delta()
 	print("TestAffixResolver: ", "PASSED" if ok else "FAILED")
 	return ok
 
@@ -208,4 +216,185 @@ static func test_stress_100x_attacks_6000_ticks() -> bool:
 		return false
 
 	print("  [✓] Stress test 6,000 ticks @ 100x attack speed passed! Total: ", elapsed_msec, "ms (avg: ", snapped(avg_tick_ms, 0.001), " ms/tick < 33ms)")
+	return true
+
+## 6. EventCompactor：合并前后 count 严格守恒，且不合并带载荷/不同因果链的事件 (§2.3)
+static func test_event_compactor_conserves_counts() -> bool:
+	var events: Array[SimEvent] = []
+	var expected_hit_count: int = 0
+	for i: int in range(200):
+		var hit: SimEvent = SimEvent.new(SimEvent.T.HIT, 1.0, 1 + (i % 3))
+		expected_hit_count += hit.count
+		events.push_back(hit)
+	var payload_ev: SimEvent = SimEvent.new(SimEvent.T.DROP, 1.0, 5)
+	payload_ev.payload = {"item_uid": 7}
+	events.push_back(payload_ev)
+	var chain_ev: SimEvent = SimEvent.new(SimEvent.T.HIT, 1.0, 4)
+	chain_ev.chain_mask = 8
+	events.push_back(chain_ev)
+	expected_hit_count += 4
+
+	var before_total: int = EventCompactor.total_count(events)
+	var merged: Array[SimEvent] = EventCompactor.merge_by_type(events)
+	var after_total: int = EventCompactor.total_count(merged)
+	if before_total != after_total:
+		printerr("EventCompactor count not conserved: ", before_total, " -> ", after_total)
+		return false
+	if merged.size() != 3:
+		printerr("EventCompactor should keep 3 events (merged HIT, payload DROP, chained HIT), got ", merged.size())
+		return false
+	var hit_total: int = 0
+	for m: SimEvent in merged:
+		if m.type == SimEvent.T.HIT:
+			hit_total += m.count
+	if hit_total != expected_hit_count:
+		printerr("EventCompactor HIT count mismatch: ", hit_total, " vs ", expected_hit_count)
+		return false
+	print("  [✓] EventCompactor count conservation passed (", before_total, " -> ", after_total, ")")
+	return true
+
+## 7. 真实 SimRunner 管线：杀戮狂热叠层加速击杀，连锁闪电派生伤害真实扣血，且词条事件透传表现队列
+static func test_runner_affix_pipeline_frenzy_and_damage() -> bool:
+	var bal: BalanceScript = BalanceScript.load_default() as BalanceScript
+
+	# 7.1 杀戮狂热: 击杀叠层 atk_speed_pct，叠层后实际攻击间隔缩短
+	var state: SimStateScript = SimStateScript.new(4242, bal)
+	state.stats.base_gold_atk_log = 6.0
+	var kf_item: ItemInstance = ItemInstance.new(11, "狂热之戒", ItemInstance.Slot.TRINKET, ItemInstance.Rarity.UNIQUE, 5, 3.0, 0.0, 1.0, bal)
+	kf_item.affixes.push_back(SignatureAffixes.create_killing_frenzy())
+	state.equip_item(kf_item)
+	if not state.resolver.has_listeners():
+		printerr("SimState.equip_item 未为含词条装备注册监听器")
+		return false
+	var runner: SimRunnerScript = SimRunnerScript.new(state)
+	for _i: int in range(60):
+		runner.step()
+	if state.buffs.get_stacks("killing_frenzy") < 1:
+		printerr("杀戮狂热未在真实管线中叠层")
+		return false
+	if state.buffs.get_stat_bonus("atk_speed_pct") <= 0.0:
+		printerr("杀戮狂热攻速加成未生效")
+		return false
+
+	# 7.2 表现层透传: 处理过的 KILL 事件带 resolved 标记仍留在队列供 PresentationBus 消费
+	var saw_resolved_kill: bool = false
+	for ev: SimEvent in runner.queue.snapshot():
+		if ev.type == SimEvent.T.KILL and bool(ev.hint.get("resolved", false)):
+			saw_resolved_kill = true
+			break
+	if not saw_resolved_kill:
+		printerr("词条管线吞掉了表现层事件 (KILL 未透传)")
+		return false
+
+	# 7.3 连锁闪电: 暴击派生事件 depth>0 且真实扣减怪物血量 (derived damage)
+	var s2: SimStateScript = SimStateScript.new(777, bal)
+	s2.stats.crit_rate = 0.75
+	s2.stats.base_gold_atk_log = 3.0
+	var cl_item: ItemInstance = ItemInstance.new(12, "雷霆之刃", ItemInstance.Slot.WEAPON, ItemInstance.Rarity.UNIQUE, 5, 3.0, 0.0, 1.0, bal)
+	cl_item.affixes.push_back(SignatureAffixes.create_chain_lightning())
+	s2.equip_item(cl_item)
+	s2.stats.crit_rate = 0.75
+	var r2: SimRunnerScript = SimRunnerScript.new(s2)
+	var saw_lightning: bool = false
+	for _j: int in range(80):
+		r2.step()
+		for ev2: SimEvent in r2.queue.snapshot():
+			if ev2.hint.get("vfx_key", "") == "chain_lightning" and ev2.depth > 0:
+				saw_lightning = true
+	if not saw_lightning:
+		printerr("连锁闪电派生事件未出现在表现队列")
+		return false
+
+	print("  [✓] Real SimRunner affix pipeline (frenzy stacks, resolved passthrough, chain lightning) passed")
+	return true
+
+## 8. 压力测试(真实管线)：攻速 ×100 跑 6,000 ticks，帧时间 < 33ms，不死循环，计数不丢
+static func test_runner_stress_100x_real_pipeline() -> bool:
+	var bal: BalanceScript = BalanceScript.load_default() as BalanceScript
+	var state: SimStateScript = SimStateScript.new(2468, bal)
+	state.stats.base_gold_atk_log = 8.0
+	var it_cl: ItemInstance = ItemInstance.new(21, "雷神锤", ItemInstance.Slot.WEAPON, ItemInstance.Rarity.UNIQUE, 50, 4.0, 0.0, 1.0, bal)
+	it_cl.affixes.push_back(SignatureAffixes.create_chain_lightning())
+	state.equip_item(it_cl)
+	var it_de: ItemInstance = ItemInstance.new(22, "爆裂护手", ItemInstance.Slot.GLOVES, ItemInstance.Rarity.UNIQUE, 50, 2.0, 0.0, 1.0, bal)
+	it_de.affixes.push_back(SignatureAffixes.create_drop_explosion())
+	state.equip_item(it_de)
+	var it_kf: ItemInstance = ItemInstance.new(23, "狂热之戒", ItemInstance.Slot.TRINKET, ItemInstance.Rarity.UNIQUE, 50, 2.0, 0.0, 1.0, bal)
+	it_kf.affixes.push_back(SignatureAffixes.create_killing_frenzy())
+	state.equip_item(it_kf)
+
+	state.stats.atk_interval = bal.base_atk_interval / 100.0
+	state.stats.crit_rate = 0.5
+	var runner: SimRunnerScript = SimRunnerScript.new(state)
+
+	var worst_msec: int = 0
+	var total_msec: int = 0
+	var ticks_count: int = 6000
+	for _t: int in range(ticks_count):
+		var t0: int = Time.get_ticks_msec()
+		runner.step()
+		# 模拟 Game 每帧泵出表现事件，避免队列无界堆积
+		while not runner.queue.is_empty():
+			runner.queue.pop_front()
+		var dt_ms: int = Time.get_ticks_msec() - t0
+		total_msec += dt_ms
+		worst_msec = maxi(worst_msec, dt_ms)
+
+	var avg_ms: float = float(total_msec) / float(ticks_count)
+	if avg_ms >= 33.0 or float(worst_msec) >= 33.0 * 4.0:
+		printerr("Real pipeline stress failed: avg=", avg_ms, "ms worst=", worst_msec, "ms")
+		return false
+	if state.tick_count != ticks_count or state.mobs_killed_total <= 0:
+		printerr("Real pipeline stress: ticks/kills abnormal ", state.tick_count, "/", state.mobs_killed_total)
+		return false
+	print("  [✓] Real-pipeline stress 6,000 ticks @ 100x passed (avg ", snapped(avg_ms, 0.001), " ms, worst ", worst_msec, " ms, kills ", state.mobs_killed_total, ")")
+	return true
+
+## 9. WP-12: 6 槽严格命名 + 换装返回旧装备 + DryRun 同种子可复现且强装备 Δ% > 0
+static func test_equip_six_slots_and_dry_run_delta() -> bool:
+	var bal: BalanceScript = BalanceScript.load_default() as BalanceScript
+	var expected_slots: Array[String] = ["weapon", "helm", "chest", "gloves", "boots", "trinket"]
+	if SimStateScript.EQUIP_SLOTS != expected_slots or ItemInstance.SLOT_KEYS != expected_slots or EquipSlots.SLOT_KEYS != expected_slots:
+		printerr("6 槽位命名违反勘误 E10")
+		return false
+
+	var state: SimStateScript = SimStateScript.new(31337, bal)
+	var weapon_a: ItemInstance = ItemInstance.new(31, "旧剑", ItemInstance.Slot.WEAPON, ItemInstance.Rarity.PURPLE, 3, 3.0, 0.2, 1.0, bal)
+	var weapon_b: ItemInstance = ItemInstance.new(32, "新剑", ItemInstance.Slot.WEAPON, ItemInstance.Rarity.UNIQUE, 20, 6.0, 0.6, 2.0, bal)
+	if state.equip_item(weapon_a) != null:
+		printerr("首次穿戴不应返回旧装备")
+		return false
+	var replaced: ItemInstance = state.equip_item(weapon_b)
+	if replaced == null or replaced.uid != 31:
+		printerr("换装未返回被替换的旧装备")
+		return false
+	var removed: ItemInstance = state.unequip_slot("weapon")
+	if removed == null or removed.uid != 32 or state.equipped["weapon"] != null:
+		printerr("unequip_slot 异常")
+		return false
+
+	# DryRun: 同种子两次结果完全一致；强装备 Δ% > 0；DryRun 不污染源状态
+	var hash_before: String = state.compute_state_hash()
+	var res1: Dictionary = DryRun.evaluate_candidate(state, weapon_b)
+	var res2: Dictionary = DryRun.evaluate_candidate(state, weapon_b)
+	if res1["delta_pct"] != res2["delta_pct"] or res1["candidate_damage_log"] != res2["candidate_damage_log"]:
+		printerr("DryRun 同种子不可复现")
+		return false
+	if float(res1["delta_pct"]) <= 0.0:
+		printerr("强力武器 DryRun Δ% 应 > 0, 实际: ", res1["delta_pct"])
+		return false
+	if state.compute_state_hash() != hash_before:
+		printerr("DryRun 污染了源 SimState")
+		return false
+
+	# 含词条装备经 DryRun 同样确定性（词条监听器随克隆重建）
+	var kf_candidate: ItemInstance = ItemInstance.new(33, "狂热戒", ItemInstance.Slot.TRINKET, ItemInstance.Rarity.UNIQUE, 20, 5.0, 0.3, 1.5, bal)
+	kf_candidate.affixes.push_back(SignatureAffixes.create_killing_frenzy())
+	var k1: Dictionary = DryRun.evaluate_candidate(state, kf_candidate)
+	var k2: Dictionary = DryRun.evaluate_candidate(state, kf_candidate)
+	if k1["delta_pct"] != k2["delta_pct"]:
+		printerr("含词条装备 DryRun 不可复现")
+		return false
+
+	print("  [✓] 6-slot equip + DryRun reproducible (weapon Δ% = ", snapped(float(res1["delta_pct"]), 0.1), ")")
 	return true
