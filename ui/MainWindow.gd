@@ -15,6 +15,10 @@ const DesktopWindowScript = preload("res://platform/DesktopWindow.gd")
 const ThemePaletteScript = preload("res://ui/ThemePalette.gd")
 const MonsterCardViewScript = preload("res://ui/MonsterCardView.gd")
 const EquipSlotViewScript = preload("res://ui/EquipSlotView.gd")
+const LootFountainScript = preload("res://presentation/loot/LootFountain.gd")
+const FloatingTextLayerScript = preload("res://presentation/battle/FloatingTextLayer.gd")
+const VfxManagerScript = preload("res://presentation/vfx/VfxManager.gd")
+const SfxMixerScript = preload("res://presentation/audio/SfxMixer.gd")
 
 const WINDOW_WIDTH: float = 360.0
 const WINDOW_HEIGHT: float = 480.0
@@ -68,6 +72,11 @@ var label_pressure: Label = null
 var equip_slots_box: HBoxContainer = null
 var equip_slot_views: Dictionary = {}
 
+var loot_fountain: LootFountainScript = null
+var vfx_manager: VfxManagerScript = null
+var floating_text: FloatingTextLayerScript = null
+var sfx_mixer: SfxMixerScript = null
+
 var _capture_preview_path: String = ""
 var _capture_after_sec: float = 0.0
 var _capture_elapsed_sec: float = 0.0
@@ -86,6 +95,27 @@ func _ready() -> void:
 		desktop_window.name = "DesktopWindow"
 		add_child(desktop_window)
 
+	if loot_fountain == null:
+		loot_fountain = LootFountainScript.new()
+		loot_fountain.name = "LootFountain"
+		loot_fountain.manual_pickup_triggered.connect(_on_manual_pickup_triggered)
+		add_child(loot_fountain)
+
+	if vfx_manager == null:
+		vfx_manager = VfxManagerScript.new()
+		vfx_manager.name = "VfxManager"
+		add_child(vfx_manager)
+
+	if floating_text == null:
+		floating_text = FloatingTextLayerScript.new()
+		floating_text.name = "FloatingTextLayer"
+		floating_text.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		floating_text.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		add_child(floating_text)
+
+	if sfx_mixer == null:
+		sfx_mixer = SfxMixerScript.new()
+
 	if game_ref == null:
 		var tree_game: GameScript = GameScript.resolve_from_tree(get_tree())
 		if tree_game != null:
@@ -102,7 +132,11 @@ func _ready() -> void:
 
 ## 绑定外部或全局 Game 会话协调器（支持测试环境注入独立确定性会话）
 func bind_game(p_game: GameScript) -> void:
+	if game_ref != null and game_ref.restored_from_minimized.is_connected(_on_restored_from_minimized):
+		game_ref.restored_from_minimized.disconnect(_on_restored_from_minimized)
 	game_ref = p_game
+	if game_ref != null and not game_ref.restored_from_minimized.is_connected(_on_restored_from_minimized):
+		game_ref.restored_from_minimized.connect(_on_restored_from_minimized)
 	if label_run_best != null:
 		refresh_hud()
 
@@ -263,12 +297,14 @@ func _build_window_hierarchy() -> void:
 	hp_bar = ProgressBar.new()
 	hp_bar.name = "HpBar"
 	hp_bar.position = Vector2(0.0, 24.0)
+	hp_bar.custom_minimum_size = Vector2(246.0, 10.0)
 	hp_bar.size = Vector2(246.0, 10.0)
 	hp_bar.min_value = 0.0
 	hp_bar.max_value = 100.0
 	hp_bar.value = 100.0
 	hp_bar.show_percentage = false
 	hp_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hp_bar.add_theme_font_size_override("font_size", 6)
 	hp_bar.add_theme_stylebox_override("background", ThemePaletteScript.make_hp_track_style())
 	hp_bar.add_theme_stylebox_override("fill", ThemePaletteScript.make_hp_fill_style())
 	header_root.add_child(hp_bar)
@@ -422,18 +458,116 @@ func _build_window_hierarchy() -> void:
 		equip_slots_box.add_child(slot_btn)
 		equip_slot_views[slot_key] = slot_btn
 
-## 排空并消费 PresentationBus 事件（表现细节将在 D3 WP-08 挂载对象池喷泉与单层飘字）
+## 排空并消费 PresentationBus 事件，驱动喷泉弹道、单层飘字、签名特效与音效预算 (WP-08)
 func _consume_presentation_events() -> void:
+	if sfx_mixer != null:
+		sfx_mixer.begin_frame()
+
 	var events: Array = game_ref.drain_presentation_events()
 	if events.is_empty() or main_card == null:
 		return
+
+	var state: SimStateScript = game_ref.get_sim_state()
+	var card_center: Vector2 = main_card.position + main_card.size * 0.5
+	var dmg_origin: Vector2 = Vector2(card_center.x, BATTLE_TOP_Y + 42.0)
 
 	for raw_ev: Variant in events:
 		var ev: SimEventScript = raw_ev as SimEventScript
 		if ev == null:
 			continue
-		if ev.type == SimEventScript.T.HIT or ev.type == SimEventScript.T.CRIT:
-			main_card.trigger_hit_flash()
+
+		if ev.hint.has("vfx_key") and vfx_manager != null and state != null:
+			var vfx_key: String = str(ev.hint.get("vfx_key", ""))
+			match vfx_key:
+				"chain_lightning":
+					var jump_idx: int = int(ev.hint.get("jump_index", 1))
+					var jump_target: Vector2 = queue_card_1.position + queue_card_1.size * 0.5
+					if jump_idx >= 2:
+						jump_target = queue_card_2.position + queue_card_2.size * 0.5
+					vfx_manager.spawn_chain_lightning(card_center, jump_target, jump_idx)
+				"drop_explosion":
+					vfx_manager.spawn_drop_explosion(card_center, int(ev.hint.get("rarity", 0)))
+				"killing_frenzy":
+					vfx_manager.spawn_killing_frenzy(card_center, state.buffs.get_stacks("killing_frenzy"))
+
+		match ev.type:
+			SimEventScript.T.HIT:
+				main_card.trigger_hit_flash()
+				if floating_text != null:
+					floating_text.add_floating_text(
+						NumScript.format_num(ev.value),
+						dmg_origin + Vector2(randf_range(-22.0, 22.0), randf_range(-10.0, 14.0)),
+						ThemePaletteScript.color_bone_white(),
+						false
+					)
+				if sfx_mixer != null and vfx_manager != null:
+					sfx_mixer.request_play_sound("hit", vfx_manager.budget)
+			SimEventScript.T.CRIT:
+				main_card.trigger_hit_flash()
+				if vfx_manager != null:
+					vfx_manager.spawn_crit_ring(card_center)
+				if floating_text != null:
+					floating_text.add_floating_text(
+						NumScript.format_num(ev.value) + "!",
+						dmg_origin + Vector2(randf_range(-26.0, 26.0), randf_range(-12.0, 12.0)),
+						ThemePaletteScript.color_crit_core(),
+						true
+					)
+				if sfx_mixer != null and vfx_manager != null:
+					sfx_mixer.request_play_sound("crit", vfx_manager.budget)
+			SimEventScript.T.DROP:
+				var rarity: int = int(ev.payload.get("rarity", 0))
+				var ilvl: int = int(ev.payload.get("ilvl", 1))
+				var launch_mul: float = float(ev.hint.get("launch_mul", 1.0))
+				if loot_fountain != null:
+					var spawn_count: int = mini(maxi(1, ev.count), 4)
+					for _d: int in range(spawn_count):
+						loot_fountain.spawn_drop(card_center, rarity, launch_mul, ilvl)
+				if vfx_manager != null and rarity >= 3:
+					vfx_manager.spawn_edge_alert(rarity)
+				if sfx_mixer != null and vfx_manager != null:
+					var sfx_id: String = "drop_rare" if rarity >= 3 else "drop_normal"
+					sfx_mixer.request_play_sound(sfx_id, vfx_manager.budget)
+			SimEventScript.T.STAGE_UP:
+				if floating_text != null:
+					floating_text.add_floating_text(
+						"第 %d 层" % int(round(ev.value)),
+						Vector2(WINDOW_WIDTH * 0.5, BATTLE_TOP_Y + 22.0),
+						ThemePaletteScript.color_old_gold_bright(),
+						true
+					)
+
+func _on_manual_pickup_triggered(ilvl: int, rarity: int) -> void:
+	if game_ref != null:
+		game_ref.request_manual_pickup(ilvl, rarity)
+
+## 窗口从最小化恢复时播一次受控回归汇总喷泉（绝不一次涌出上千掉落，Q10 & E8）
+func _on_restored_from_minimized(summary: Dictionary) -> void:
+	if loot_fountain == null or main_card == null:
+		return
+	var card_center: Vector2 = main_card.position + main_card.size * 0.5
+	var rare_list: Array = summary.get("rare_drops", []) as Array
+	var spawned_rare: int = 0
+	for rare_raw: Variant in rare_list:
+		if spawned_rare >= 5:
+			break
+		if rare_raw is Dictionary:
+			var rare_dict: Dictionary = rare_raw as Dictionary
+			loot_fountain.spawn_drop(card_center, int(rare_dict.get("rarity", 3)), 1.15, int(rare_dict.get("ilvl", 1)))
+			spawned_rare += 1
+
+	var total_drops: int = int(summary.get("drops_count", 0))
+	var normal_summary: int = mini(3, total_drops)
+	for _i: int in range(normal_summary):
+		loot_fountain.spawn_drop(card_center, 1, 1.0, 1)
+
+	if floating_text != null and total_drops > 0:
+		floating_text.add_floating_text(
+			"回归 +%d 掉落" % total_drops,
+			Vector2(WINDOW_WIDTH * 0.5, BATTLE_TOP_Y + 28.0),
+			ThemePaletteScript.color_old_gold_bright(),
+			true
+		)
 
 ## 只读读取 SimState 刷新全部极简 HUD 指标（层数、金币、净资产 W、财富压力血量倍率）
 func refresh_hud() -> void:
