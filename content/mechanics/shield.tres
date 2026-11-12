@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="MechanicDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://simulation/mechanics/MechanicDef.gd" id="1_mech"]
+
+[resource]
+script = ExtResource("1_mech")
+id = "shield"
+display_name = "护盾"
+kind = 1 ; 来源: 02号文件 §7.1 — 100–199 层主题机制：护盾
+wall_hint = "护盾吸收了大部分伤害 → 试试多段攻击 / 高攻速 / 连锁闪电" ; 来源: 02号文件 §7.2 卡墙信号文案

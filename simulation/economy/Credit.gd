@@ -9,12 +9,13 @@ const BalanceScript = preload("res://simulation/Balance.gd")
 const FLOAT_EPS: float = 1e-9
 
 var credit_tier: int = 0
+var tier_bonus: int = 0   # 科技树「信用背书」带来的额外等级 (不改变 credit_tier 升阶计数)
 var active_loan: bool = false
 var borrowed_principal_log: float = NumScript.ZERO
 
 ## 计算当前信用等级允许的最大借款额度 limit = I * 10 * 1.5^tier (Log10 域)
 func get_credit_limit_log(stage: int, balance: BalanceScript) -> float:
-	return balance.get_credit_limit_log(stage, credit_tier)
+	return balance.get_credit_limit_log(stage, credit_tier + tier_bonus)
 
 ## 判定在当前信用状态下该借款金额是否可申请
 func can_borrow(stage: int, borrow_log: float, balance: BalanceScript) -> bool:
@@ -52,6 +53,7 @@ func preview_borrow(stage: int, borrow_log: float, balance: BalanceScript) -> Di
 func clone() -> Credit:
 	var copy: Credit = (get_script() as GDScript).new() as Credit
 	copy.credit_tier = credit_tier
+	copy.tier_bonus = tier_bonus
 	copy.active_loan = active_loan
 	copy.borrowed_principal_log = borrowed_principal_log
 	return copy

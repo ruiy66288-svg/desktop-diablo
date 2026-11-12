@@ -55,6 +55,10 @@ func step() -> int:
 		if not state_cq.is_empty():
 			state_cq.drain_and_apply(state, queue)
 
+	# 自动化分支「自动升级」：非门前储蓄期按 Balance 上限自动购买金币攻击升级 (§5.3 & §7.3)
+	if state.has_tech_effect("auto_buy_atk") and not state.is_saving_for_toll():
+		state.upgrades.buy_atk_upgrades_bulk(state, state.balance.auto_buy_max_per_tick)
+
 	var tick_dt: float = state.balance.sim_tick_dt
 	state.tick_count += 1
 	state.elapsed_seconds += tick_dt

@@ -101,6 +101,22 @@ func _apply_hit_damage(
 	var cur_dmg: float = dmg_log
 
 	while cur_dmg > NumScript.ZERO and (current_kills + kills_added) < max_kills:
+		# 护盾机制 (§7.1)：每次命中至多削掉 strip_cap 的护盾；护盾未破时整击被吸收
+		if state.mob_shield_cur_log > NumScript.ZERO:
+			var allowed_strip: float = state.mob_shield_strip_cap_log + NumScript.from_float(float(maxi(1, hit_count)))
+			var actual_strip: float = NumScript.min_num(cur_dmg, allowed_strip)
+			if actual_strip >= state.mob_shield_cur_log:
+				var post_shield_dmg: float = NumScript.sub(actual_strip, state.mob_shield_cur_log)
+				state.mob_shield_cur_log = NumScript.ZERO
+				cur_dmg = NumScript.min_num(cur_dmg, post_shield_dmg)
+				if cur_dmg == NumScript.ZERO:
+					break
+			else:
+				state.mob_shield_cur_log = NumScript.sub(state.mob_shield_cur_log, actual_strip)
+				var absorb_ev: SimEventScript = SimEventScript.new(SimEventScript.T.HIT, actual_strip, hit_count)
+				absorb_ev.hint = {"shield_absorb": true}
+				queue.push_back(absorb_ev)
+				break
 		if cur_dmg >= state.mob_current_hp_log:
 			kills_added += 1
 			state.mobs_killed_total += 1

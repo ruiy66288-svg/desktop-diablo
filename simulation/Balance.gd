@@ -151,6 +151,7 @@ static func reload_default() -> Resource:
 @export var tech_base_minutes: float = 2.0             # 来源: 02号文件 §5.3 — 科技节点基础研究时长 2 分钟: 2 * 2.2^tier
 @export var tech_tier_time_growth: float = 2.20        # 来源: 02号文件 §5.3 — 科技研究时长层级指数底数 2.2
 @export var tech_queue_max_slots: int = 5              # 来源: 02号文件 §0 Q27 & §5.3 — 研究队列容量上限 5 格
+@export var auto_buy_max_per_tick: int = 16            # 来源: 02号文件 §5.3 自动化分支 — 自动购买金币升级每 tick 最多购买级数 (防单 tick 爆循环)
 @export var tech_deep_unlock_tier: int = 5             # 来源: 02号文件 §5.3 — 深渊印记解锁第 5 层以后深层节点
 @export var offline_cap_base_hours: float = 8.0        # 来源: 02号文件 §0 Q5 & §3.4 — 默认离线收益上限 8 小时
 @export var offline_cap_max_hours: float = 24.0        # 来源: 02号文件 §0 Q5 & §3.4 & §5.3 — 升级后离线收益上限 24 小时
@@ -312,6 +313,6 @@ func get_smelt_mult_log(rarity: int) -> float:
 			return smelt_mult_white_log
 
 ## 计算第 tier 层科技节点所需研究时长（秒, §5.3: 2 min * 2.2^tier）
-func get_tech_research_seconds(tier: int) -> float:
-	var seconds_per_min: float = 60.0
+func get_tech_research_seconds(tier: int, debug_seconds_mode: bool = false) -> float:
+	var seconds_per_min: float = 1.0 if debug_seconds_mode else 60.0
 	return tech_base_minutes * seconds_per_min * pow(tech_tier_time_growth, float(maxi(0, tier)))

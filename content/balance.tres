@@ -94,6 +94,7 @@ credit_max_concurrent_loans = 1 ; 来源: 02号文件 §5.2 (默认单笔并发�
 tech_base_minutes = 2.0 ; 来源: 02号文件 §5.3 (研究基础时长 2 分钟)
 tech_tier_time_growth = 2.2 ; 来源: 02号文件 §5.3 (研究时长指数底数 2.2^tier)
 tech_queue_max_slots = 5 ; 来源: 02号文件 §0 Q27 & §5.3 (研究队列 5 格)
+auto_buy_max_per_tick = 16 ; 来源: 02号文件 §5.3 自动化分支 (每 tick 自动购买级数上限)
 tech_deep_unlock_tier = 5 ; 来源: 02号文件 §5.3 (深渊印记解锁第 5 层以后节点)
 offline_cap_base_hours = 8.0 ; 来源: 02号文件 §0 Q5 & §3.4 (默认离线上限 8h)
 offline_cap_max_hours = 24.0 ; 来源: 02号文件 §0 Q5 & §3.4 & §5.3 (升级后离线上限 24h)

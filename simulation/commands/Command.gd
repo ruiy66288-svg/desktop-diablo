@@ -14,7 +14,9 @@ enum Type {
 	REPAY_CREDIT,         # 主动使用金币余额还款: payload {"amount_log": float}
 	SOUL_PRESTIGE,        # 灵魂转生: payload {}
 	ABYSS_PRESTIGE,       # 深渊印记转生: payload {"extract_power_id": String}
-	SET_FILTER_THRESHOLD  # 设置掉落过滤保留品质阈值 (>= threshold): payload {"threshold": int}
+	SET_FILTER_THRESHOLD,  # 设置掉落过滤保留品质阈值 (>= threshold): payload {"threshold": int}
+	START_RESEARCH,        # 开始研究科技节点 (§5.3): payload {"node_id": String, "now_unix": int}
+	SETTLE_RESEARCH        # 按 Unix 时间戳结算到期研究 (离线重开同样使用): payload {"now_unix": int}
 }
 
 var type: Type = Type.BUY_ATK_UPGRADE
@@ -54,6 +56,12 @@ static func make_soul_prestige() -> Command:
 
 static func make_abyss_prestige(extract_power_id: String = "") -> Command:
 	return _create(Type.ABYSS_PRESTIGE, {"extract_power_id": extract_power_id})
+
+static func make_start_research(node_id: String, now_unix: int) -> Command:
+	return _create(Type.START_RESEARCH, {"node_id": node_id, "now_unix": now_unix})
+
+static func make_settle_research(now_unix: int) -> Command:
+	return _create(Type.SETTLE_RESEARCH, {"now_unix": now_unix})
 
 func clone() -> Command:
 	return (get_script() as GDScript).new(type, payload.duplicate()) as Command

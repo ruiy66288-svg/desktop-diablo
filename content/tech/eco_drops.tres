@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="TechNodeDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://simulation/tech/TechNodeDef.gd" id="1_node"]
+
+[resource]
+script = ExtResource("1_node")
+id = "eco_drops"
+display_name = "丰饶罗盘"
+branch = "economy" ; 来源: 02号文件 Q28 (战斗/经济/信贷/自动化四分支)
+tier = 2 ; 来源: 02号文件 §5.3 (研究时长 2 分钟 × 2.2^tier)
+cost_gold_log = 6 ; 来源: 02号文件 §5.3 (价格按层级指数增长，原型占位价，D6 试玩校准)
+prereq_id = "eco_scavenger"
+effect_key = "drop_qty_bonus"
+effect_val = 0.5 ; 来源: 02号文件 §5.3 (节点 Effect 注入 StatSheet 修饰器)
+desc = "掉落件数 +50%"

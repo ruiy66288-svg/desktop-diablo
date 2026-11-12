@@ -26,6 +26,7 @@ var atk_interval: float = 0.50
 var crit_rate: float = 0.05
 var crit_rate_cap: float = 0.75
 var crit_mult: float = 1.50
+var crit_rate_bonus: float = 0.0   # 科技树加成（独立于 crit_rate，避免重算覆盖手动设置）
 var magic_find: float = 0.0
 var drop_qty_bonus: float = 0.0
 
@@ -43,7 +44,7 @@ func sync_from_balance(balance: BalanceScript) -> void:
 
 ## 获取受上限约束的有效暴击率
 func get_effective_crit_rate() -> float:
-	return clampf(crit_rate, 0.0, crit_rate_cap)
+	return clampf(crit_rate + crit_rate_bonus, 0.0, crit_rate_cap)
 
 ## 计算单次普通命中（未暴击）伤害 d_hit (Log10 域, §1.2)
 func get_base_hit_damage_log() -> float:
@@ -89,6 +90,7 @@ func clone() -> StatSheet:
 	copy.crit_rate = crit_rate
 	copy.crit_rate_cap = crit_rate_cap
 	copy.crit_mult = crit_mult
+	copy.crit_rate_bonus = crit_rate_bonus
 	copy.magic_find = magic_find
 	copy.drop_qty_bonus = drop_qty_bonus
 	return copy

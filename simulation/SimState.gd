@@ -21,6 +21,9 @@ const EventQueueScript = preload("res://simulation/events/EventQueue.gd")
 const BuffsScript = preload("res://simulation/events/Buffs.gd")
 const AffixResolverScript = preload("res://simulation/events/AffixResolver.gd")
 const EquipSlotsScript = preload("res://simulation/progression/EquipSlots.gd")
+const TechTreeScript = preload("res://simulation/tech/TechTree.gd")
+const ResearchQueueScript = preload("res://simulation/tech/ResearchQueue.gd")
+const TechNodeDefScript = preload("res://simulation/tech/TechNodeDef.gd")
 
 const EQUIP_SLOTS: Array[String] = [
 	"weapon",
@@ -96,6 +99,9 @@ var boss_fail_streak: int = 0
 var farm_kills_since_retreat: int = 0
 var last_fail_margin_log: float = NumScript.ZERO
 var atk_progress: float = 0.0
+var mob_shield_max_log: float = NumScript.ZERO        # 当前怪物护盾上限 (§7.1，无护盾为 -INF)
+var mob_shield_cur_log: float = NumScript.ZERO
+var mob_shield_strip_cap_log: float = NumScript.ZERO
 
 # 5. 6 槽装备栏、外部指令队列与子系统实例
 var equipped: Dictionary = {}
@@ -110,6 +116,8 @@ var command_queue: CommandQueueScript
 var buffs: BuffsScript
 var resolver: AffixResolverScript
 var equip_slots: EquipSlotsScript
+var tech: TechTreeScript                 # 科技树（永不随转生重置, Q28）
+var research_queue: ResearchQueueScript   # 研究队列（Unix 时间戳, Q27）
 
 func _init(seed_val: int = 123456789, p_balance: BalanceScript = null) -> void:
 	balance = p_balance if p_balance != null else (BalanceScript.load_default() as BalanceScript)
@@ -124,6 +132,8 @@ func _init(seed_val: int = 123456789, p_balance: BalanceScript = null) -> void:
 	buffs = BuffsScript.new()
 	resolver = AffixResolverScript.new()
 	equip_slots = EquipSlotsScript.new()
+	tech = TechTreeScript.new()
+	research_queue = ResearchQueueScript.new()
 	_init_empty_equip_slots()
 	recalculate_stats()
 
@@ -243,8 +253,10 @@ func add_income(amount_log: float, queue: EventQueueScript = null) -> void:
 	if amount_log == NumScript.ZERO:
 		return
 
+	var income_bonus_pct: float = tech.get_effect_total("income_mult_pct")
+	var boosted_log: float = amount_log + NumScript.from_float(1.0 + income_bonus_pct) if income_bonus_pct > 0.0 else amount_log
 	var saving_mode: bool = is_saving_for_toll()
-	wallet.add_income(amount_log, balance, get_active_stage(), saving_mode)
+	wallet.add_income(boosted_log, balance, get_active_stage(), saving_mode)
 
 	if enforce_toll_gates and try_pay_next_toll() and gate_boss_cleared:
 		advance_to_next_stage(queue)
@@ -252,6 +264,36 @@ func add_income(amount_log: float, queue: EventQueueScript = null) -> void:
 ## 申请信贷借款 (§5.2 & Q26)
 func borrow_credit(borrow_amount_log: float) -> bool:
 	return wallet.borrow(borrow_amount_log, get_active_stage(), balance)
+
+## 判定某项科技效果是否已生效（如 auto_buy_atk）
+func has_tech_effect(effect_key: String) -> bool:
+	return tech.get_effect_total(effect_key) > 0.0
+
+## 开始研究：校验前置/队列容量/金币，扣费后入队（时间戳由调用方传入，Sim 不读系统时钟，§4.6）
+func start_research(node_id: String, now_unix: int) -> bool:
+	var def: TechNodeDefScript = tech.get_def(node_id)
+	if def == null or tech.has_researched(node_id) or research_queue.contains(node_id):
+		return false
+	if not def.prereq_id.is_empty() and not tech.has_researched(def.prereq_id) and not research_queue.contains(def.prereq_id):
+		return false
+	if research_queue.is_full(balance.tech_queue_max_slots):
+		return false
+	if not spend_gold(def.cost_gold_log):
+		return false
+	return research_queue.push(node_id, now_unix, tech.get_research_duration_seconds(def, balance), balance.tech_queue_max_slots)
+
+## 按时间戳结算到期研究（离线重开同样走此入口），完成后重算属性并发出 ATTENTION 事件，返回完成的节点 id
+func settle_research(now_unix: int, queue: EventQueueScript = null) -> Array[String]:
+	var done: Array[String] = research_queue.settle(now_unix)
+	for node_id: String in done:
+		tech.mark_researched(node_id)
+		if queue != null:
+			var ev: SimEventScript = SimEventScript.new(SimEventScript.T.ATTENTION, 0.0)
+			ev.payload = {"signal": "research_done", "node_id": node_id}
+			queue.push_back(ev)
+	if not done.is_empty():
+		recalculate_stats()
+	return done
 
 ## 装备 6 槽穿戴，返回被替换下来的旧装备（无则为 null）并重算 StatSheet (E10)
 func equip_item(item: ItemInstanceScript) -> ItemInstanceScript:
@@ -297,6 +339,10 @@ func recalculate_stats() -> void:
 		var avg_vault_mult: float = VAULT_AVG_WEIGHT * (balance.unique_mult_min + balance.unique_mult_max)
 		total_unique_log += float(active_vault_count) * NumScript.from_float(avg_vault_mult)
 
+	total_add_pct += tech.get_effect_total("additive_pct")
+	stats.crit_rate_bonus = tech.get_effect_total("crit_rate")
+	stats.drop_qty_bonus = tech.get_effect_total("drop_qty_bonus")
+	wallet.credit.tier_bonus = int(tech.get_effect_total("credit_tier_bonus"))
 	stats.gear_flat_atk_log = total_gear_flat_log
 	stats.additive_percent = total_add_pct
 	stats.unique_mults_sum_log = total_unique_log
@@ -356,6 +402,9 @@ func _reset_run_progress(_keep_equipped: bool) -> void:
 	farm_kills_since_retreat = 0
 	last_fail_margin_log = NumScript.ZERO
 	atk_progress = 0.0
+	mob_shield_max_log = NumScript.ZERO
+	mob_shield_cur_log = NumScript.ZERO
+	mob_shield_strip_cap_log = NumScript.ZERO
 	upgrades.reset_levels()
 
 ## 派生事件超出最大深度时的溢出保底奖励 (§2.3)
@@ -400,6 +449,10 @@ func compute_state_hash() -> String:
 			parts.append("eq_%s:null" % slot_key)
 		else:
 			parts.append("eq_%s:%d,%.8f" % [slot_key, eq_item.uid, eq_item.score])
+	if mob_shield_max_log != NumScript.ZERO:
+		parts.append("shield:%.12f,%.12f" % [mob_shield_max_log, mob_shield_cur_log])
+	if not tech.researched.is_empty() or research_queue.size() > 0 or credit.tier_bonus > 0:
+		parts.append("tech:%s|%s" % [tech.get_signature(), research_queue.get_signature()])
 	if not buffs.is_empty():
 		parts.append("buffs:%s" % buffs.get_signature())
 	parts.append("inv:%d" % inventory.get_count())
@@ -446,6 +499,11 @@ func clone() -> SimState:
 	copy.loot_roller = loot_roller.clone()
 	copy.upgrades = upgrades.clone()
 	copy.buffs = buffs.clone()
+	copy.tech = tech.clone()
+	copy.research_queue = research_queue.clone()
+	copy.mob_shield_max_log = mob_shield_max_log
+	copy.mob_shield_cur_log = mob_shield_cur_log
+	copy.mob_shield_strip_cap_log = mob_shield_strip_cap_log
 	for slot_key: String in EQUIP_SLOTS:
 		var eq_item: ItemInstanceScript = equipped.get(slot_key, null) as ItemInstanceScript
 		if eq_item != null:

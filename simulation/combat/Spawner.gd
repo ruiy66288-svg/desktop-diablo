@@ -4,8 +4,28 @@ class_name Spawner extends RefCounted
 ## 纯 RefCounted，零 Node 依赖
 
 const SimStateScript = preload("res://simulation/SimState.gd")
+const BalanceScript = preload("res://simulation/Balance.gd")
+const NumScript = preload("res://core/num/Num.gd")
+const BandRulesScript = preload("res://simulation/mechanics/BandRules.gd")
 
 static func spawn_next(state: SimStateScript) -> void:
+	_spawn_core(state)
+	_apply_band_shield(state)
+
+## 每 100 层主题机制：护盾 (§7.1) —— 护盾量 = 强度 × 50% 最大生命；每次命中最多削掉 强度 × strip% 最大生命
+static func _apply_band_shield(state: SimStateScript) -> void:
+	var bal: BalanceScript = state.balance
+	var strength: float = BandRulesScript.get_shield_strength(state.get_active_stage(), bal)
+	if strength <= 0.0:
+		state.mob_shield_max_log = NumScript.ZERO
+		state.mob_shield_cur_log = NumScript.ZERO
+		state.mob_shield_strip_cap_log = NumScript.ZERO
+		return
+	state.mob_shield_max_log = state.mob_max_hp_log + NumScript.from_float(strength * bal.mech_shield_hp_ratio)
+	state.mob_shield_cur_log = state.mob_shield_max_log
+	state.mob_shield_strip_cap_log = state.mob_max_hp_log + NumScript.from_float(strength * bal.mech_shield_max_hit_strip)
+
+static func _spawn_core(state: SimStateScript) -> void:
 	# 1. 若处于退回刷怪状态 (farm_stage < current_stage)，检查是否已变强可自动重试 Boss (Q3 & E3)
 	if state.farm_stage < state.current_stage:
 		if state.should_retry_current_stage():

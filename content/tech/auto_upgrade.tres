@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="TechNodeDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://simulation/tech/TechNodeDef.gd" id="1_node"]
+
+[resource]
+script = ExtResource("1_node")
+id = "auto_upgrade"
+display_name = "自动升级"
+branch = "automation" ; 来源: 02号文件 Q28 (战斗/经济/信贷/自动化四分支)
+tier = 1 ; 来源: 02号文件 §5.3 (研究时长 2 分钟 × 2.2^tier)
+cost_gold_log = 5 ; 来源: 02号文件 §5.3 (价格按层级指数增长，原型占位价，D6 试玩校准)
+prereq_id = ""
+effect_key = "auto_buy_atk"
+effect_val = 1 ; 来源: 02号文件 §5.3 (节点 Effect 注入 StatSheet 修饰器)
+desc = "非储蓄期自动购买金币攻击升级"

@@ -10,6 +10,9 @@ const TestLootInventory = preload("res://tests/test_loot_inventory.gd")
 const TestWallet = preload("res://tests/test_wallet.gd")
 const TestPresentation = preload("res://tests/test_presentation.gd")
 const TestAffixResolver = preload("res://tests/test_affix_resolver.gd")
+const TestCredit = preload("res://tests/test_credit.gd")
+const TestTechTree = preload("res://tests/test_tech_tree.gd")
+const TestTollMechanics = preload("res://tests/test_toll_mechanics.gd")
 
 func _init() -> void:
 	print("==================================================")
@@ -54,6 +57,21 @@ func _init() -> void:
 	if TestAffixResolver.run_all_tests():
 		passed_count += 1
 
+	# 7b. WP-13: 信贷溢价 / 预览一致 / 40% 抵扣 / 信用升阶
+	total_count += 1
+	if TestCredit.run():
+		passed_count += 1
+
+	# 7c. WP-14: 科技树 6 节点 + 5 格研究队列（Unix 时间戳）
+	total_count += 1
+	if TestTechTree.run():
+		passed_count += 1
+
+	# 7d. WP-15: 第 100 层门票 / 储蓄托管 / 护盾机制
+	total_count += 1
+	if TestTollMechanics.run():
+		passed_count += 1
+
 	# 8. WP-04 (自动接入): 若 res://tests/test_curve_sim.gd 存在则执行
 	if ResourceLoader.exists("res://tests/test_curve_sim.gd"):
 		var curve_test_script: GDScript = ResourceLoader.load("res://tests/test_curve_sim.gd") as GDScript
@@ -85,6 +103,17 @@ func _init() -> void:
 				printerr("[TestRunner] 可选测试脚本编译失败，计为未通过: " + vfx_test_script.resource_path)
 			else:
 				if bool(vfx_test_script.call("run")):
+					passed_count += 1
+
+	# 11. D5 UI (自动接入): 若 res://tests/test_d5_ui.gd 存在则执行
+	if ResourceLoader.exists("res://tests/test_d5_ui.gd"):
+		var d5_ui_test_script: GDScript = ResourceLoader.load("res://tests/test_d5_ui.gd") as GDScript
+		if d5_ui_test_script != null:
+			total_count += 1
+			if not d5_ui_test_script.can_instantiate():
+				printerr("[TestRunner] 可选测试脚本编译失败，计为未通过: " + d5_ui_test_script.resource_path)
+			else:
+				if bool(d5_ui_test_script.call("run")):
 					passed_count += 1
 
 	print("--------------------------------------------------")

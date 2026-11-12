@@ -125,6 +125,13 @@ func apply_command(cmd: CommandScript, state: RefCounted, event_queue: EventQueu
 			state.call("perform_soul_prestige")
 			return true
 
+		CommandScript.Type.START_RESEARCH:
+			return bool(state.call("start_research", String(cmd.payload.get("node_id", "")), int(cmd.payload.get("now_unix", 0))))
+
+		CommandScript.Type.SETTLE_RESEARCH:
+			var settled: Array = state.call("settle_research", int(cmd.payload.get("now_unix", 0)), event_queue) as Array
+			return not settled.is_empty()
+
 		CommandScript.Type.ABYSS_PRESTIGE:
 			var power_id: String = String(cmd.payload.get("extract_power_id", ""))
 			state.call("perform_abyss_prestige", power_id)
