@@ -1,6 +1,6 @@
 class_name LootRoller extends RefCounted
 
-## 确定性掉落生成器 (依据《02_系统架构与数值_v6.md》§1.7 与《00_开发执行总纲.md》§2 E10、§4.3)
+## 确定性掉落生成器 (依据《02_系统架构与数值_v6.md》§1.7 与《00_开发执行总纲.md》§2 E10、§4.3、WP-05)
 ## 严格且仅使用 SimRng.loot 独立随机流，绝不污染 combat / collection 流；全部常数读取 Balance
 
 const ItemInstanceScript = preload("res://simulation/loot/ItemInstance.gd")
@@ -10,6 +10,7 @@ const SimRngScript = preload("res://core/rng/SimRng.gd")
 const BalanceScript = preload("res://simulation/Balance.gd")
 const StatSheetScript = preload("res://simulation/StatSheet.gd")
 
+const PERCENT_TO_RATIO: float = 0.01
 const SLOT_DISPLAY_NAMES: Array[String] = ["武器", "头盔", "胸甲", "手套", "靴子", "饰品"]
 const RARITY_PREFIXES: Array[String] = ["粗制", "淬火", "铭文", "深渊", "太古"]
 
@@ -38,7 +39,7 @@ func roll_loot_for_kill(
 	var sim_rng: SimRngScript = state.get("rng") as SimRngScript
 	var loot_stream: SimRngScript.RngStream = sim_rng.loot
 
-	# 1. 掉落件数: 1.2 * (1 + drop_qty_bonus)，Boss 为基础固定倍数，单次上限 drop_max_per_kill
+	# 1. 掉落件数: 1.2 * (1 + drop_qty_bonus)，Boss 为基础固定件数，单次上限 drop_max_per_kill (30)
 	var qty_mult: float = 1.0 + maxf(0.0, stats.drop_qty_bonus)
 	var expected_qty: float = float(bal.boss_drop_base_count) * qty_mult if is_boss else bal.drop_base_per_kill * qty_mult
 	var base_count: int = int(floor(expected_qty))
@@ -51,7 +52,7 @@ func roll_loot_for_kill(
 	var prestige_count: int = int(state.get("prestige_count"))
 	var eff_mf: float = bal.get_effective_mf(stats.magic_find)
 
-	for _i in range(drop_count):
+	for _i: int in range(drop_count):
 		var item: ItemInstanceScript = _generate_item(stage, prestige_count, eff_mf, bal, loot_stream)
 		drops.push_back(item)
 		if queue != null:
@@ -79,8 +80,8 @@ func _generate_item(
 	var slot_idx: int = loot_stream.randi_range_val(0, slot_max_idx)
 	var slot_enum: ItemInstanceScript.Slot = slot_idx as ItemInstanceScript.Slot
 
-	# 品质权重 (MF 按比例放大紫/暗金/太古权重)
-	var mf_factor: float = 1.0 + eff_mf * 0.01
+	# 品质权重 (D2 递减 MF 按比例放大紫/暗金/太古权重)
+	var mf_factor: float = 1.0 + eff_mf * PERCENT_TO_RATIO
 	var w_primal: float = bal.rarity_weight_primal * mf_factor
 	var w_unique: float = bal.rarity_weight_unique * mf_factor
 	var w_purple: float = bal.rarity_weight_purple * mf_factor
@@ -112,12 +113,14 @@ func _generate_item(
 		else:
 			rarity_enum = ItemInstanceScript.Rarity.WHITE
 
-	# iLvl 与太古满 roll 规则 (§1.2 & §1.7)
+	# iLvl 与太古满 roll + iLvl+5 + 额外 1 词条规则 (§1.2 & §1.7)
 	var ilvl: int = maxi(1, stage)
 	var phi: float = bal.eq_phi_max
+	var extra_affixes: int = 0
 	if rarity_enum == ItemInstanceScript.Rarity.PRIMAL:
 		ilvl += bal.primal_bonus_ilvl
 		phi = bal.eq_phi_max
+		extra_affixes = bal.primal_extra_affixes
 	else:
 		phi = loot_stream.randf_range_val(bal.eq_phi_min, bal.eq_phi_max)
 
@@ -140,7 +143,7 @@ func _generate_item(
 			pass
 
 	var item_name: String = _build_item_name(slot_idx, int(rarity_enum))
-	return ItemInstanceScript.new(
+	var created: ItemInstanceScript = ItemInstanceScript.new(
 		uid,
 		item_name,
 		slot_enum,
@@ -151,6 +154,8 @@ func _generate_item(
 		unique_mult,
 		bal
 	)
+	created.bonus_affix_slots = extra_affixes
+	return created
 
 func _build_item_name(slot_idx: int, rarity_idx: int) -> String:
 	var s_idx: int = clampi(slot_idx, 0, SLOT_DISPLAY_NAMES.size() - 1)

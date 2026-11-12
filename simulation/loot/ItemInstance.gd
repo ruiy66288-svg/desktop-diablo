@@ -40,6 +40,7 @@ var ilvl: int = 1
 var flat_atk_log: float = NumScript.ZERO
 var additive_pct: float = 0.0
 var unique_mult: float = 1.0
+var bonus_affix_slots: int = 0
 var affixes: Array = []
 var score: float = 0.0
 
@@ -79,7 +80,7 @@ func get_slot_name_key() -> String:
 
 ## 计算装备综合评分（用于 24 格背包满溢时自动淘汰评分最低项, Q13）
 func calc_score(p_balance: BalanceScript = null) -> float:
-	var bal: BalanceScript = p_balance if p_balance != null else BalanceScript.load_default()
+	var bal: BalanceScript = p_balance if p_balance != null else (BalanceScript.load_default() as BalanceScript)
 	var rarity_val: float = float(rarity) * bal.score_rarity_weight
 	var ilvl_val: float = float(ilvl) * bal.score_ilvl_weight
 	var atk_val: float = flat_atk_log if flat_atk_log != NumScript.ZERO else 0.0
@@ -98,6 +99,7 @@ func clone() -> ItemInstance:
 		additive_pct,
 		unique_mult
 	) as ItemInstance
+	copy.bonus_affix_slots = bonus_affix_slots
 	copy.affixes = affixes.duplicate()
 	copy.score = score
 	return copy

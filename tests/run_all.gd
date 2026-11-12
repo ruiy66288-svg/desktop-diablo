@@ -34,7 +34,7 @@ func _init() -> void:
 	if TestCombatSim.run():
 		passed_count += 1
 
-	# 4. WP-05: 掉落、过滤、熔炼与 24 格背包测试
+	# 4. WP-05: 掉落、过滤、熔炼、24 格背包与 Command 队列测试
 	total_count += 1
 	if TestLootInventory.run():
 		passed_count += 1
@@ -54,13 +54,22 @@ func _init() -> void:
 	if TestAffixResolver.run_all_tests():
 		passed_count += 1
 
-	# 7. WP-04 (可选自动接入): 若 res://tests/test_curve_sim.gd 已创建则一并执行
+	# 8. WP-04 (自动接入): 若 res://tests/test_curve_sim.gd 存在则执行
 	if ResourceLoader.exists("res://tests/test_curve_sim.gd"):
 		var curve_test_script: GDScript = ResourceLoader.load("res://tests/test_curve_sim.gd") as GDScript
 		if curve_test_script != null:
 			total_count += 1
-			var ok: bool = bool(curve_test_script.call("run"))
-			if ok:
+			var ok_curve: bool = bool(curve_test_script.call("run"))
+			if ok_curve:
+				passed_count += 1
+
+	# 9. WP-07 (自动接入): 若 res://tests/test_desktop_window.gd 存在则执行
+	if ResourceLoader.exists("res://tests/test_desktop_window.gd"):
+		var desktop_test_script: GDScript = ResourceLoader.load("res://tests/test_desktop_window.gd") as GDScript
+		if desktop_test_script != null:
+			total_count += 1
+			var ok_desktop: bool = bool(desktop_test_script.call("run"))
+			if ok_desktop:
 				passed_count += 1
 
 	print("--------------------------------------------------")

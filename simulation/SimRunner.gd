@@ -1,16 +1,21 @@
 class_name SimRunner extends RefCounted
 
-## 固定步长确定性模拟时钟 (10Hz，最多追赶 50 个 tick，依据《02_系统架构与数值_v6.md》§3.2 & WP-03)
+## 固定步长确定性模拟时钟 (10Hz，最多追赶 50 个 tick，依据《02_系统架构与数值_v6.md》§2.1、§3.2 & WP-03/WP-05)
 ## 纯 RefCounted，零 Node 依赖，参数统一由 Balance 驱动
 
 const SimStateScript = preload("res://simulation/SimState.gd")
+const CommandScript = preload("res://simulation/commands/Command.gd")
+const CommandQueueScript = preload("res://simulation/commands/CommandQueue.gd")
 const CombatScript = preload("res://simulation/combat/Combat.gd")
 const EventQueueScript = preload("res://simulation/events/EventQueue.gd")
 const NumScript = preload("res://core/num/Num.gd")
 
+const TICK_EPS: float = 1e-9
+
 var state: SimStateScript
 var combat: CombatScript
 var queue: EventQueueScript
+var command_queue: CommandQueueScript
 var offline_handler: Callable = Callable()
 
 var _acc: float = 0.0
@@ -20,7 +25,16 @@ func _init(p_state: SimStateScript, p_offline_handler: Callable = Callable()) ->
 	state = p_state
 	combat = CombatScript.new()
 	queue = EventQueueScript.new()
+	command_queue = CommandQueueScript.new()
 	offline_handler = p_offline_handler
+
+## 将外部只写指令送入权威队列，在下一 tick 起始处确定性消费
+func push_command(cmd: CommandScript) -> void:
+	if command_queue != null:
+		command_queue.push(cmd)
+
+func enqueue_command(cmd: CommandScript) -> void:
+	push_command(cmd)
 
 func get_last_step_kills() -> int:
 	return _last_step_kills
@@ -28,8 +42,16 @@ func get_last_step_kills() -> int:
 func get_accumulator() -> float:
 	return _acc
 
-## 执行单次固定步长 (默认 0.1s = 10Hz)
+## 执行单次固定步长 (默认 0.1s = 10Hz；按 §3.2 顺序：先处理 commands → combat → 事件压缩)
 func step() -> int:
+	if command_queue != null and not command_queue.is_empty():
+		command_queue.drain_and_apply(state, queue)
+	var state_cq_var: Variant = state.get("command_queue")
+	if state_cq_var is CommandQueueScript:
+		var state_cq: CommandQueueScript = state_cq_var as CommandQueueScript
+		if not state_cq.is_empty():
+			state_cq.drain_and_apply(state, queue)
+
 	var tick_dt: float = state.balance.sim_tick_dt
 	state.tick_count += 1
 	state.elapsed_seconds += tick_dt
@@ -38,7 +60,7 @@ func step() -> int:
 	if state.elapsed_seconds > 0.0:
 		var pending_souls: float = state.balance.get_pending_souls_log(state.run_best, state.marks)
 		if pending_souls != NumScript.ZERO:
-			var rate_log: float = pending_souls - NumScript.from_float(state.elapsed_seconds)
+			var rate_log: float = NumScript.div(pending_souls, NumScript.from_float(state.elapsed_seconds))
 			state.peak_soul_rate_log = NumScript.max_num(state.peak_soul_rate_log, rate_log)
 
 	queue.compact_same_type(state.balance.event_compact_threshold)
@@ -61,7 +83,7 @@ func advance(delta: float) -> int:
 		_acc = float(max_ticks) * tick_dt
 
 	var steps_run: int = 0
-	while _acc >= tick_dt - 1e-9 and steps_run < max_ticks:
+	while _acc >= tick_dt - TICK_EPS and steps_run < max_ticks:
 		_acc = maxf(0.0, _acc - tick_dt)
 		step()
 		steps_run += 1
