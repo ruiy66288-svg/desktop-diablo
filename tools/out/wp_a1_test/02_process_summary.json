@@ -1,0 +1,25 @@
+{
+  "tool": "process_subject.py@1.1.0",
+  "src_path": "F:\\挂机游戏制作\\tools\\out\\wp_a1_test\\01_procedural_raw_gray.png",
+  "src_sha256": "9f4fa3052f6983bffb6b2b138f2f5379b945861a16f0b7fbc1964b14e4a8b8bc",
+  "packed_path": "F:\\挂机游戏制作\\tools\\out\\wp_a1_test\\02_packed_rgba_352x440.png",
+  "packed_sha256": "b180e69b69a30014acffe68a0f087030bd70ff53e4e722bae61b5bda2431e2fc",
+  "category": "monster",
+  "accent_family": "demon",
+  "output_size": [
+    352,
+    440
+  ],
+  "bg_sampled_rgb": [
+    128.0,
+    128.0,
+    128.0
+  ],
+  "foreground_pixels": 41628,
+  "channel_ratios": {
+    "ink_black": 0.484,
+    "r_bone": 0.4544,
+    "g_accent": 0.0249,
+    "b_gold": 0.0367
+  }
+}

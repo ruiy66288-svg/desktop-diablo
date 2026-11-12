@@ -1,0 +1,35 @@
+=== WP-A1 程序化测试主体全流程实测日志 ===
+
+[STEP 1] 程序化原图已生成: tools/out/wp_a1_test/01_procedural_raw_gray.png
+
+[STEP 2] process_subject.py -> exit=0
+[+] 四通道打包完成: F:\挂机游戏制作\tools\out\wp_a1_test\02_packed_rgba_352x440.png (352x440) | 墨黑=48.4% R骨白=45.4% G点缀=2.5% B镀金=3.7%
+
+[STEP 3] qa_report.py -> exit=0
+[+] QA 结论: PASS (7/7) — F:\挂机游戏制作\tools\out\wp_a1_test\02_packed_rgba_352x440.png
+  [PASS] DIM: 352x440 (RGBA)  (标准: 352x440 (RGBA))
+  [PASS] ALPHA_CLEAN: 边界残留=0.00%, 半透明边=4.7%, 杂点=0  (标准: 边界残留<=2.0%, 半透明边<=22.0%, 杂点=0)
+  [PASS] V2_CHANNEL_CAPS: G点缀=2.49%, B镀金=3.67%, 通道混叠=0.00%  (标准: G<=6.0%, B<=12.0%, 混叠<=1.0%)
+  [PASS] V4_INK_MASS: 48.40%  (标准: 35% ~ 55%)
+  [PASS] V3_LINE_WIDTH: <1.5px细线占比=0.00%, 中位线宽=2.00px (@176x220)  (标准: <1.5px细线占比 <= 15.0%)
+  [PASS] V5_COMPOSITION: 高占比=85.9%, 水平偏移=0.0%, 脚底线=92.0%  (标准: 高占比 82%~90%, 水平偏移<=4%, 脚底线 88%~96%)
+  [PASS] V1_THUMB_READABILITY: 灰糊占比=18.8%, RMS对比度=0.324, 剪影占空=27.6%  (标准: 灰糊占比<=25.0%, RMS对比度>=0.220, 剪影占空>=18.0%)
+
+[STEP 4] contact_sheet.py -> exit=0
+[+] 检视联系表已生成: F:\挂机游戏制作\tools\out\wp_a1_test\04_contact_sheet.png
+
+[STEP 5A] export.py -> exit=0
+[+] 资产已合规导出: assets/art/monsters/mon_demon_proc_test_v01.png
+    SHA-256 : b180e69b69a30014acffe68a0f087030bd70ff53e4e722bae61b5bda2431e2fc
+    .import : F:\挂机游戏制作\tools\out\wp_a1_test\05_exported_sandbox\assets\art\monsters\mon_demon_proc_test_v01.png.import
+    Manifest: F:\挂机游戏制作\tools\out\wp_a1_test\05_exported_sandbox\art_source\manifest.csv
+
+[STEP 5B] verify_manifest.py (沙盒已登记资产正向通过) -> exit=0
+[+] verify_manifest 校验通过: assets_dir='F:\挂机游戏制作\tools\out\wp_a1_test\05_exported_sandbox\assets\art' 下共 1 件光栅/矢量资产，SHA-256、工具链、.import 与许可证台账 100% 合规！
+
+[STEP 6A] verify_manifest.py 拦截正式目录未登记临时文件 -> exit=1 (成功拦截!)
+[X] verify_manifest 校验失败 (共发现 1 项违规):
+  - 拦截未登记资产: 'assets/art/monsters/_tmp_unregistered_rogue_test.png' 未在 art_source/manifest.csv 中登记！
+
+[STEP 6B] 清理未登记临时文件后复跑 verify_manifest.py -> exit=0
+[+] verify_manifest 校验通过: assets_dir='F:\挂机游戏制作\assets\art' 下共 0 件光栅/矢量资产，SHA-256、工具链、.import 与许可证台账 100% 合规！
