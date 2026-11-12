@@ -1,7 +1,7 @@
 class_name SimState extends RefCounted
 
 ## 《桌面破坏神》核心确定性模拟状态快照 (纯 RefCounted, 零 Node 依赖, 可克隆可哈希)
-## 依据《02_系统架构与数值_v6.md》§1.2–§1.7、§5、§7、§9.1 与《00_开发执行总纲.md》WP-03、§2 E1/E3/E4/E10
+## 依据《02_系统架构与数值_v6.md》§1.2–§1.7、§2.1、§5、§7、§9.1 与《00_开发执行总纲.md》WP-03/05/06、§2 E1/E3/E4/E9/E10
 
 const NumScript = preload("res://core/num/Num.gd")
 const SimRngScript = preload("res://core/rng/SimRng.gd")
@@ -12,6 +12,9 @@ const FilterScript = preload("res://simulation/loot/Filter.gd")
 const LootRollerScript = preload("res://simulation/loot/LootRoller.gd")
 const UpgradesScript = preload("res://simulation/progression/Upgrades.gd")
 const CreditScript = preload("res://simulation/economy/Credit.gd")
+const WalletScript = preload("res://simulation/economy/Wallet.gd")
+const CommandScript = preload("res://simulation/commands/Command.gd")
+const CommandQueueScript = preload("res://simulation/commands/CommandQueue.gd")
 const ItemInstanceScript = preload("res://simulation/loot/ItemInstance.gd")
 const SimEventScript = preload("res://simulation/events/SimEvent.gd")
 const EventQueueScript = preload("res://simulation/events/EventQueue.gd")
@@ -27,6 +30,8 @@ const EQUIP_SLOTS: Array[String] = [
 	"boots",
 	"trinket"
 ]
+const RETRY_MARGIN_EPS: float = 1e-4
+const VAULT_AVG_WEIGHT: float = 0.5
 
 # 1. 四个层数变量 (§9.1 & 勘误 E3 铁律)
 var all_time_best: int = 1       # 跨所有转生的历史最高层 (永不下降)
@@ -34,11 +39,39 @@ var run_best: int = 1            # 本周目最高层 (本周目永不下降，�
 var current_stage: int = 1       # 当前正在挑战层 (>= farm_stage，退回时绝不下降)
 var farm_stage: int = 1          # 自动刷怪层 (<= run_best，Boss 超时退回只改此变量)
 
-# 2. 货币、债务与跨周目成长 (§9.1 & 勘误 E1/E4：严禁第二货币，唯一货币 gold)
-var gold: float = NumScript.ZERO                # 金币余额 (log10)
-var debt_total: float = NumScript.ZERO          # 含浮动溢价的应还总负债 (log10)
-var legacy_debt_minutes: float = 0.0            # 跨周目带入的宿债时长 (分钟, 普通 float)
-var toll_escrow: float = NumScript.ZERO         # 门票专用托管账户 (log10, 锁定且绝不计入净财富 W)
+# 2. 统一钱包权威源与跨周目成长 (§5.1–§5.2、§9.1 & 勘误 E1/E4：严禁第二货币，唯一货币 gold)
+var wallet: WalletScript = WalletScript.new()
+
+var gold: float:
+	get:
+		return wallet.gold
+	set(value):
+		wallet.gold = value
+
+var debt_total: float:
+	get:
+		return wallet.debt_total
+	set(value):
+		wallet.debt_total = value
+
+var legacy_debt_minutes: float:
+	get:
+		return wallet.legacy_debt_minutes
+	set(value):
+		wallet.legacy_debt_minutes = value
+
+var toll_escrow: float:
+	get:
+		return wallet.toll_escrow
+	set(value):
+		wallet.toll_escrow = value
+
+var credit: CreditScript:
+	get:
+		return wallet.credit
+	set(value):
+		wallet.credit = value
+
 var souls: float = NumScript.ZERO               # 灵魂储备 (log10)
 var marks: int = 0                              # 累计深渊印记数
 var vault_powers: Array[String] = []            # 已萃取的永久威能 ID 列表
@@ -64,7 +97,7 @@ var farm_kills_since_retreat: int = 0
 var last_fail_margin_log: float = NumScript.ZERO
 var atk_progress: float = 0.0
 
-# 5. 6 槽装备栏与子系统实例
+# 5. 6 槽装备栏、外部指令队列与子系统实例
 var equipped: Dictionary = {}
 var stats: StatSheetScript
 var rng: SimRngScript
@@ -73,20 +106,21 @@ var inventory: InventoryScript
 var filter: FilterScript
 var loot_roller: LootRollerScript
 var upgrades: UpgradesScript
-var credit: CreditScript
+var command_queue: CommandQueueScript
 var buffs: BuffsScript
 var resolver: AffixResolverScript
 var equip_slots: EquipSlotsScript
 
 func _init(seed_val: int = 123456789, p_balance: BalanceScript = null) -> void:
-	balance = p_balance if p_balance != null else BalanceScript.load_default()
+	balance = p_balance if p_balance != null else (BalanceScript.load_default() as BalanceScript)
+	wallet = WalletScript.new()
+	command_queue = CommandQueueScript.new()
 	rng = SimRngScript.new(seed_val)
 	stats = StatSheetScript.new(balance)
 	inventory = InventoryScript.new()
 	filter = FilterScript.new()
 	loot_roller = LootRollerScript.new()
 	upgrades = UpgradesScript.new()
-	credit = CreditScript.new()
 	buffs = BuffsScript.new()
 	resolver = AffixResolverScript.new()
 	equip_slots = EquipSlotsScript.new()
@@ -98,31 +132,39 @@ func _init_empty_equip_slots() -> void:
 	for slot_key: String in EQUIP_SLOTS:
 		equipped[slot_key] = null
 
+## 将外部只写指令压入权威队列，等待下一 tick 起始处确定性结算
+func push_command(cmd: CommandScript) -> void:
+	command_queue.push(cmd)
+
+func enqueue_command(cmd: CommandScript) -> void:
+	command_queue.push(cmd)
+
 ## 获取当前实际刷怪/战斗所在层（退回刷怪时为 farm_stage，正常推进时等于 current_stage）
 func get_active_stage() -> int:
 	return farm_stage if farm_stage < current_stage else current_stage
 
-## 获取当前净财富 W = gold - debt_total 信息（勘误 E4：严格不含 toll_escrow）
+## 获取当前净财富 W = gold - debt_total 信息（勘误 E4：统一委托 Wallet，严格不含 toll_escrow）
 func get_net_wealth_info(stage_override: int = -1) -> Dictionary:
 	var target_stage: int = stage_override if stage_override > 0 else get_active_stage()
-	var expected_income: float = balance.get_expected_income_per_min_log(target_stage)
-
-	if debt_total > gold:
-		var net_debt_log: float = NumScript.sub(debt_total, gold)
-		var debt_ratio: float = pow(10.0, clampf(net_debt_log - expected_income, -30.0, 30.0))
-		return {"is_debt": true, "ratio": debt_ratio, "net_log": net_debt_log}
-
-	var net_gold_log: float = NumScript.sub(gold, debt_total)
-	if net_gold_log == NumScript.ZERO:
-		return {"is_debt": false, "ratio": 0.0, "net_log": NumScript.ZERO}
-
-	var surplus_ratio: float = pow(10.0, clampf(net_gold_log - expected_income, -30.0, 30.0))
-	return {"is_debt": false, "ratio": surplus_ratio, "net_log": net_gold_log}
+	return wallet.get_net_wealth_info(target_stage, balance)
 
 ## 计算指定层在当前净财富下的怪物血量压力修正 Δh_wealth (Log10 域)
 func get_wealth_pressure_hp_delta(stage_override: int = -1) -> float:
-	var info: Dictionary = get_net_wealth_info(stage_override)
-	return balance.get_wealth_pressure_hp_delta(bool(info["is_debt"]), float(info["ratio"]))
+	var target_stage: int = stage_override if stage_override > 0 else get_active_stage()
+	return wallet.get_wealth_pressure_hp_delta(target_stage, balance)
+
+## 获取指定层在当前净财富下的怪物血量倍率（普通 float，范围 [0.40, 3.00]，供 HUD 展示）
+func get_wealth_hp_multiplier(stage_override: int = -1) -> float:
+	var target_stage: int = stage_override if stage_override > 0 else get_active_stage()
+	return wallet.get_wealth_hp_multiplier(target_stage, balance)
+
+## 花费金币（勘误 E9：统一委托 Wallet.spend，仅扣减余额使压力回落，无额外消费 buff）
+func spend_gold(cost_log: float) -> bool:
+	return wallet.spend(cost_log)
+
+## 主动使用金币余额提前偿还活跃债务
+func repay_debt_with_gold(amount_log: float) -> float:
+	return wallet.repay_with_gold(amount_log)
 
 ## 计算指定层含财富压力的 Boss 血量与当前期望 DPS 差值（用于变强后自动重试判定, Q3）
 func get_boss_power_margin_log(stage_val: int) -> float:
@@ -137,7 +179,7 @@ func should_retry_current_stage() -> bool:
 	if farm_kills_since_retreat >= balance.farm_retry_kills:
 		return true
 	var cur_margin: float = get_boss_power_margin_log(current_stage)
-	return cur_margin > last_fail_margin_log + 1e-4
+	return cur_margin > last_fail_margin_log + RETRY_MARGIN_EPS
 
 ## 判定当前是否处于门前储蓄托管模式 (§7.3 & Q36)
 func is_saving_for_toll() -> bool:
@@ -200,54 +242,14 @@ func add_income(amount_log: float, queue: EventQueueScript = null) -> void:
 		return
 
 	var saving_mode: bool = is_saving_for_toll()
-	var has_active_debt: bool = debt_total != NumScript.ZERO
-	var has_legacy_debt: bool = legacy_debt_minutes > 0.0
-
-	if has_active_debt or has_legacy_debt:
-		var deduct_rate: float = balance.repayment_deduction_rate
-		var repay_log: float = amount_log + NumScript.from_float(deduct_rate)
-		var remain_log: float = amount_log + NumScript.from_float(maxf(0.0, 1.0 - deduct_rate))
-
-		if has_active_debt:
-			if repay_log >= debt_total:
-				debt_total = NumScript.ZERO
-				if credit.active_loan:
-					credit.active_loan = false
-					credit.credit_tier += 1
-			else:
-				debt_total = NumScript.sub(debt_total, repay_log)
-		elif has_legacy_debt:
-			var expected_min_log: float = balance.get_expected_income_per_min_log(get_active_stage())
-			var paid_minutes: float = pow(10.0, clampf(repay_log - expected_min_log, -20.0, 20.0))
-			legacy_debt_minutes = maxf(0.0, legacy_debt_minutes - paid_minutes)
-
-		if saving_mode:
-			toll_escrow = NumScript.add(toll_escrow, remain_log)
-		else:
-			gold = NumScript.add(gold, remain_log)
-	else:
-		if saving_mode:
-			toll_escrow = NumScript.add(toll_escrow, amount_log)
-		else:
-			gold = NumScript.add(gold, amount_log)
+	wallet.add_income(amount_log, balance, get_active_stage(), saving_mode)
 
 	if enforce_toll_gates and try_pay_next_toll() and gate_boss_cleared:
 		advance_to_next_stage(queue)
 
 ## 申请信贷借款 (§5.2 & Q26)
 func borrow_credit(borrow_amount_log: float) -> bool:
-	if credit.active_loan:
-		return false
-	var stage_ref: int = get_active_stage()
-	var preview: Dictionary = credit.preview_borrow(stage_ref, borrow_amount_log, balance)
-	if not bool(preview.get("valid", false)):
-		return false
-
-	gold = NumScript.add(gold, borrow_amount_log)
-	debt_total = NumScript.add(debt_total, float(preview["repayment_total_log"]))
-	credit.active_loan = true
-	credit.borrowed_principal_log = borrow_amount_log
-	return true
+	return wallet.borrow(borrow_amount_log, get_active_stage(), balance)
 
 ## 装备 6 槽穿戴，返回被替换下来的旧装备（无则为 null）并重算 StatSheet (E10)
 func equip_item(item: ItemInstanceScript) -> ItemInstanceScript:
@@ -276,7 +278,7 @@ func recalculate_stats() -> void:
 
 	var active_vault_count: int = mini(vault_powers.size(), balance.get_vault_slot_count(marks))
 	if active_vault_count > 0:
-		var avg_vault_mult: float = 0.5 * (balance.unique_mult_min + balance.unique_mult_max)
+		var avg_vault_mult: float = VAULT_AVG_WEIGHT * (balance.unique_mult_min + balance.unique_mult_max)
 		total_unique_log += float(active_vault_count) * NumScript.from_float(avg_vault_mult)
 
 	stats.gear_flat_atk_log = total_gear_flat_log
@@ -317,14 +319,7 @@ func perform_abyss_prestige(extract_power_id: String = "") -> int:
 	return earned_marks
 
 func _settle_unpaid_debt_to_legacy() -> void:
-	if debt_total != NumScript.ZERO:
-		var ref_stage: int = maxi(1, current_stage)
-		var exp_inc_log: float = balance.get_expected_income_per_min_log(ref_stage)
-		var added_minutes: float = pow(10.0, clampf(debt_total - exp_inc_log, -20.0, 20.0))
-		legacy_debt_minutes += added_minutes
-	debt_total = NumScript.ZERO
-	credit.active_loan = false
-	credit.borrowed_principal_log = NumScript.ZERO
+	wallet.settle_prestige_debt_to_legacy(maxi(1, current_stage), balance)
 
 func _reset_run_progress(_keep_equipped: bool) -> void:
 	run_best = 1
@@ -349,7 +344,7 @@ func _reset_run_progress(_keep_equipped: bool) -> void:
 
 ## 派生事件超出最大深度时的溢出保底奖励 (§2.3)
 func overflow_reward(_ev: Variant) -> void:
-	var bonus_gold: float = balance.get_mob_gold_log(get_active_stage()) + balance.overflow_reward_offset_log
+	var bonus_gold: float = NumScript.mul(balance.get_mob_gold_log(get_active_stage()), balance.overflow_reward_offset_log)
 	add_income(bonus_gold)
 
 ## 生成包含全部核心字段与三条独立 RNG 种子流的确定性 SHA-256 状态哈希 (WP-03 验收基准)
@@ -390,7 +385,7 @@ func compute_state_hash() -> String:
 		else:
 			parts.append("eq_%s:%d,%.8f" % [slot_key, eq_item.uid, eq_item.score])
 	parts.append("inv:%d" % inventory.get_count())
-	for idx in range(inventory.get_count()):
+	for idx: int in range(inventory.get_count()):
 		var inv_item: ItemInstanceScript = inventory.get_item_at(idx)
 		parts.append("i%d:%d,%.8f" % [idx, inv_item.uid, inv_item.score])
 
@@ -404,10 +399,8 @@ func clone() -> SimState:
 	copy.run_best = run_best
 	copy.current_stage = current_stage
 	copy.farm_stage = farm_stage
-	copy.gold = gold
-	copy.debt_total = debt_total
-	copy.legacy_debt_minutes = legacy_debt_minutes
-	copy.toll_escrow = toll_escrow
+	copy.wallet = wallet.clone()
+	copy.command_queue = command_queue.clone()
 	copy.souls = souls
 	copy.marks = marks
 	copy.vault_powers = vault_powers.duplicate()
@@ -434,7 +427,6 @@ func clone() -> SimState:
 	copy.filter = filter.clone()
 	copy.loot_roller = loot_roller.clone()
 	copy.upgrades = upgrades.clone()
-	copy.credit = credit.clone()
 	for slot_key: String in EQUIP_SLOTS:
 		var eq_item: ItemInstanceScript = equipped.get(slot_key, null) as ItemInstanceScript
 		if eq_item != null:
