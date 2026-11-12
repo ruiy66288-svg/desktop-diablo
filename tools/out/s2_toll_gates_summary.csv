@@ -1,0 +1,16 @@
+strategy,gate_stage,wait_min_p10,wait_min_p50,wait_min_p90,wait_min_max,infinite_wait_count,gate_pass
+zero_op,100,6.21,9.66,19.78,22.08,0,true
+zero_op,200,21.70,26.43,41.85,45.77,0,true
+zero_op,300,26.66,28.33,37.12,44.99,0,true
+zero_op,400,5.67,9.30,12.85,16.17,0,true
+zero_op,500,2.50,3.64,10.75,11.09,0,true
+standard,100,0.50,1.43,2.17,3.46,0,true
+standard,200,16.72,18.58,20.26,21.20,0,true
+standard,300,20.19,21.27,23.25,26.97,0,true
+standard,400,0.93,2.18,3.59,4.31,0,true
+standard,500,0.25,0.53,1.17,1.91,0,true
+aggressive_debt,100,0.39,0.52,1.39,3.07,0,true
+aggressive_debt,200,20.89,22.66,26.17,27.78,0,true
+aggressive_debt,300,24.52,26.21,28.36,29.11,0,true
+aggressive_debt,400,0.47,0.75,1.52,2.40,0,true
+aggressive_debt,500,0.26,0.32,0.41,0.53,0,true

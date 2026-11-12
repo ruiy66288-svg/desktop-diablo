@@ -86,17 +86,34 @@ static func run() -> bool:
 		return false
 
 	# 6. 验证灵魂、深渊印记、威能槽与 D2 递减 MF 公式 (§1.4, §1.5, §1.7)
-	if bal.get_pending_souls_log(50, 0) != NumScript.ZERO:
+	# 6a) 在 BalanceScript.new() 纸面默认常数上验证《02》原始纸面数值
+	var paper_bal: BalanceScript = BalanceScript.new()
+	if paper_bal.get_pending_souls_log(50, 0) != NumScript.ZERO:
 		printerr("[TestBalance] 50 层及以下不应产出灵魂!")
 		return false
-	if absf(bal.get_pending_souls_log(70, 0) - 1.0) > 1e-6:
+	if absf(paper_bal.get_pending_souls_log(70, 0) - 1.0) > 1e-6:
 		printerr("[TestBalance] 70 层零印记灵魂产出应为 log10=1.0 (10 灵魂)!")
 		return false
-	if absf(bal.get_effective_soul_k(5) - 0.10) > 1e-6:
-		printerr("[TestBalance] 5 枚印记应使 k 翻倍至 0.10!")
+	if absf(paper_bal.get_effective_soul_k(5) - 0.10) > 1e-6:
+		printerr("[TestBalance] 纸面默认下 5 枚印记应使 k 翻倍至 0.10!")
 		return false
-	if bal.get_pending_marks(99) != 0 or bal.get_pending_marks(100) != 1 or bal.get_pending_marks(400) != 8:
-		printerr("[TestBalance] 深渊印记产出公式 floor((s/100)^1.5) 计算错误!")
+	if paper_bal.get_pending_marks(99) != 0 or paper_bal.get_pending_marks(100) != 1 or paper_bal.get_pending_marks(400) != 8:
+		printerr("[TestBalance] 纸面默认深渊印记产出公式 floor((s/100)^1.5) 计算错误!")
+		return false
+
+	# 6b) 在 res://content/balance.tres 实装配置上验证公式关系一致性 (兼容 Gate-1 调参)
+	if bal.get_pending_souls_log(bal.soul_start_stage, 0) != NumScript.ZERO:
+		printerr("[TestBalance] balance.tres 灵魂起始层及以下不应产出灵魂!")
+		return false
+	var expected_k5: float = bal.soul_k_coeff * (1.0 + bal.mark_k_amp_per_mark * 5.0)
+	if absf(bal.get_effective_soul_k(5) - expected_k5) > 1e-6:
+		printerr("[TestBalance] balance.tres 印记放大灵魂指数公式计算错误!")
+		return false
+	var below_div_stage: int = int(floor(bal.mark_stage_divisor)) - 1
+	var at_div_stage: int = int(ceil(bal.mark_stage_divisor))
+	var expected_marks_400: int = int(floor(pow(400.0 / bal.mark_stage_divisor, bal.mark_stage_exponent)))
+	if bal.get_pending_marks(below_div_stage) != 0 or bal.get_pending_marks(at_div_stage) < 1 or bal.get_pending_marks(400) != expected_marks_400:
+		printerr("[TestBalance] balance.tres 深渊印记次线性/幂次公式计算错误!")
 		return false
 	if bal.get_vault_slot_count(0) != 1 or bal.get_vault_slot_count(10) != 3:
 		printerr("[TestBalance] 卡奈威能槽数量公式错误!")
