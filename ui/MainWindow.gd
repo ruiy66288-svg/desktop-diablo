@@ -19,6 +19,8 @@ const LootFountainScript = preload("res://presentation/loot/LootFountain.gd")
 const FloatingTextLayerScript = preload("res://presentation/battle/FloatingTextLayer.gd")
 const VfxManagerScript = preload("res://presentation/vfx/VfxManager.gd")
 const SfxMixerScript = preload("res://presentation/audio/SfxMixer.gd")
+const DryRunScript = preload("res://simulation/commands/DryRun.gd")
+const SignatureAffixesScript = preload("res://simulation/affix/SignatureAffixes.gd")
 
 const WINDOW_WIDTH: float = 360.0
 const WINDOW_HEIGHT: float = 480.0
@@ -71,6 +73,10 @@ var label_pressure: Label = null
 
 var equip_slots_box: HBoxContainer = null
 var equip_slot_views: Dictionary = {}
+var equip_compare_panel: PanelContainer = null
+var equip_compare_title: Label = null
+var equip_compare_list: VBoxContainer = null
+var _active_compare_slot: String = ""
 
 var loot_fountain: LootFountainScript = null
 var vfx_manager: VfxManagerScript = null
@@ -81,6 +87,8 @@ var _capture_preview_path: String = ""
 var _capture_after_sec: float = 0.0
 var _capture_elapsed_sec: float = 0.0
 var _capture_done: bool = false
+var _demo_affix_vfx: bool = false
+var _demo_vfx_fired: bool = false
 
 func _ready() -> void:
 	custom_minimum_size = Vector2(WINDOW_WIDTH, WINDOW_HEIGHT)
@@ -146,6 +154,20 @@ func _process(delta: float) -> void:
 	_consume_presentation_events()
 	refresh_hud()
 
+	if _demo_affix_vfx and not _demo_vfx_fired and vfx_manager != null and main_card != null:
+		var trigger_at: float = maxf(0.1, _capture_after_sec - 0.08) if _capture_after_sec > 0.0 else 0.5
+		if _capture_elapsed_sec >= trigger_at:
+			_demo_vfx_fired = true
+			var c_pos: Vector2 = main_card.position + main_card.size * 0.5
+			var q1_pos: Vector2 = queue_card_1.position + queue_card_1.size * 0.5
+			var q2_pos: Vector2 = queue_card_2.position + queue_card_2.size * 0.5
+			vfx_manager.spawn_chain_lightning(c_pos, q1_pos, 1)
+			vfx_manager.spawn_chain_lightning(q1_pos, q2_pos, 2)
+			vfx_manager.spawn_drop_explosion(c_pos + Vector2(12.0, 34.0), 4)
+			vfx_manager.update_killing_frenzy_afterimage(8, Rect2(main_card.position, main_card.size))
+			vfx_manager.spawn_crit_ring(c_pos)
+			vfx_manager.spawn_edge_alert(4)
+
 	if not _capture_done and not _capture_preview_path.is_empty():
 		_capture_elapsed_sec += delta
 		if _capture_elapsed_sec >= _capture_after_sec:
@@ -160,6 +182,8 @@ func _parse_capture_user_args() -> void:
 			_capture_preview_path = arg.trim_prefix("--capture-preview=")
 		elif arg.begins_with("--capture-after-sec="):
 			target_sec = maxf(0.5, float(arg.trim_prefix("--capture-after-sec=")))
+		elif arg == "--demo-affix-vfx":
+			_demo_affix_vfx = true
 	if not _capture_preview_path.is_empty():
 		_capture_after_sec = target_sec
 
@@ -458,6 +482,9 @@ func _build_window_hierarchy() -> void:
 		equip_slots_box.add_child(slot_btn)
 		equip_slot_views[slot_key] = slot_btn
 
+	# 8. WP-12 暗金木刻风装备对比与 DryRun 换装浮层 (#16161C 底 + #B08D57 边框)
+	_build_equip_compare_panel()
+
 ## 排空并消费 PresentationBus 事件，驱动喷泉弹道、单层飘字、签名特效与音效预算 (WP-08)
 func _consume_presentation_events() -> void:
 	if sfx_mixer != null:
@@ -680,31 +707,208 @@ func refresh_hud() -> void:
 		else:
 			slot_view.set_item_state(true, int(eq_item.rarity), eq_item.ilvl)
 
+	# 6. 杀戮狂热残影 Shader 层只读同步
+	if vfx_manager != null and main_card != null and not _demo_vfx_fired:
+		var frenzy_stacks: int = state.buffs.get_stacks("killing_frenzy") if state.buffs != null else 0
+		vfx_manager.update_killing_frenzy_afterimage(frenzy_stacks, Rect2(main_card.position, main_card.size))
+
 func _on_btn_upgrade_atk_pressed() -> void:
 	if game_ref != null:
 		game_ref.request_buy_atk_upgrade(1)
 
-func _on_equip_slot_clicked(slot_key: String) -> void:
+func _build_equip_compare_panel() -> void:
+	equip_compare_panel = PanelContainer.new()
+	equip_compare_panel.name = "EquipComparePanel"
+	equip_compare_panel.position = Vector2(16.0, 128.0)
+	equip_compare_panel.size = Vector2(328.0, 260.0)
+	equip_compare_panel.visible = false
+	equip_compare_panel.z_index = 25
+
+	var panel_sb: StyleBoxFlat = ThemePaletteScript.make_card_style(
+		ThemePaletteScript.color_old_gold(),
+		4,
+		1
+	)
+	panel_sb.content_margin_left = 10.0
+	panel_sb.content_margin_right = 10.0
+	panel_sb.content_margin_top = 8.0
+	panel_sb.content_margin_bottom = 8.0
+	equip_compare_panel.add_theme_stylebox_override("panel", panel_sb)
+	add_child(equip_compare_panel)
+
+	var vbox: VBoxContainer = VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 6)
+	equip_compare_panel.add_child(vbox)
+
+	var header: HBoxContainer = HBoxContainer.new()
+	vbox.add_child(header)
+
+	equip_compare_title = Label.new()
+	equip_compare_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	equip_compare_title.text = "装备对比 (30s DryRun)"
+	equip_compare_title.add_theme_font_size_override("font_size", 12)
+	equip_compare_title.add_theme_color_override("font_color", ThemePaletteScript.color_old_gold_bright())
+	header.add_child(equip_compare_title)
+
+	var close_btn: Button = Button.new()
+	close_btn.name = "BtnCloseCompare"
+	close_btn.text = "关闭"
+	close_btn.custom_minimum_size = Vector2(44.0, 22.0)
+	close_btn.add_theme_font_size_override("font_size", 11)
+	close_btn.add_theme_color_override("font_color", ThemePaletteScript.color_bone_white())
+	close_btn.pressed.connect(close_equip_compare_panel)
+	header.add_child(close_btn)
+
+	var scroll: ScrollContainer = ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	vbox.add_child(scroll)
+
+	equip_compare_list = VBoxContainer.new()
+	equip_compare_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	equip_compare_list.add_theme_constant_override("separation", 6)
+	scroll.add_child(equip_compare_list)
+
+## 纯只读计算指定槽位在当前背包中的 DryRun 30s DPS Δ% 对比列表 (WP-12)
+func get_compare_entries_data(slot_key: String, dry_seed: int = 987654321) -> Array[Dictionary]:
+	var entries: Array[Dictionary] = []
 	if game_ref == null:
+		return entries
+	var state: SimStateScript = game_ref.get_sim_state()
+	if state == null:
+		return entries
+
+	for i: int in range(state.inventory.get_count()):
+		var inv_item: ItemInstanceScript = state.inventory.get_item_at(i)
+		if inv_item == null:
+			continue
+		if ItemInstanceScript.get_slot_key(inv_item.slot) != slot_key:
+			continue
+		var dry_res: Dictionary = DryRunScript.evaluate_candidate(state, inv_item, dry_seed)
+		var delta_pct: float = float(dry_res.get("delta_pct", 0.0))
+		entries.push_back({
+			"uid": inv_item.uid,
+			"name": inv_item.name if not inv_item.name.is_empty() else ("%s Lv.%d" % [slot_key.capitalize(), inv_item.ilvl]),
+			"ilvl": inv_item.ilvl,
+			"rarity": int(inv_item.rarity),
+			"score": inv_item.score,
+			"delta_pct": delta_pct
+		})
+
+	entries.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		return float(a.get("delta_pct", 0.0)) > float(b.get("delta_pct", 0.0))
+	)
+	return entries
+
+func open_equip_compare_panel(slot_key: String) -> void:
+	if equip_compare_panel == null or equip_compare_list == null or game_ref == null:
 		return
 	var state: SimStateScript = game_ref.get_sim_state()
 	if state == null:
 		return
 
-	# 从背包中只读检索同部位最高评分装备，若优于当前穿戴则投递 Command.EQUIP_ITEM
+	_active_compare_slot = slot_key
+	var slot_labels: Dictionary = {
+		"weapon": "武器",
+		"helm": "头盔",
+		"chest": "胸甲",
+		"gloves": "手套",
+		"boots": "战靴",
+		"trinket": "饰品"
+	}
+	var slot_cn: String = str(slot_labels.get(slot_key, slot_key))
+	equip_compare_title.text = "%s · 30s DryRun 对比" % slot_cn
+
+	for child: Node in equip_compare_list.get_children():
+		child.queue_free()
+
 	var cur_equipped: ItemInstanceScript = state.equipped.get(slot_key, null) as ItemInstanceScript
-	var best_score: float = cur_equipped.score if cur_equipped != null else -1.0
-	var best_uid: int = -1
+	var cur_label: Label = Label.new()
+	cur_label.add_theme_font_size_override("font_size", 11)
+	if cur_equipped != null:
+		cur_label.text = "当前穿戴: %s (Lv.%d)" % [cur_equipped.name, cur_equipped.ilvl]
+		cur_label.add_theme_color_override("font_color", ThemePaletteScript.get_rarity_color(int(cur_equipped.rarity)))
+	else:
+		cur_label.text = "当前穿戴: [空槽位]"
+		cur_label.add_theme_color_override("font_color", ThemePaletteScript.color_bone_shadow())
+	equip_compare_list.add_child(cur_label)
 
-	for i: int in range(state.inventory.get_count()):
-		var inv_item: ItemInstanceScript = state.inventory.get_item_at(i)
-		if inv_item != null and ItemInstanceScript.get_slot_key(inv_item.slot) == slot_key:
-			if inv_item.score > best_score:
-				best_score = inv_item.score
-				best_uid = inv_item.uid
+	var candidates: Array[Dictionary] = get_compare_entries_data(slot_key)
+	if candidates.is_empty():
+		var empty_lbl: Label = Label.new()
+		empty_lbl.text = "背包内暂无可替换的 %s 装备" % slot_cn
+		empty_lbl.add_theme_font_size_override("font_size", 11)
+		empty_lbl.add_theme_color_override("font_color", ThemePaletteScript.color_ash_gray())
+		equip_compare_list.add_child(empty_lbl)
+	else:
+		for cand: Dictionary in candidates:
+			var row_panel: PanelContainer = PanelContainer.new()
+			var row_sb: StyleBoxFlat = ThemePaletteScript.make_card_style(
+				ThemePaletteScript.color_iron_gray(),
+				3,
+				1
+			)
+			row_sb.bg_color = Color.html(ThemePaletteScript.HEX_WINDOW_BG)
+			row_sb.content_margin_left = 6.0
+			row_sb.content_margin_right = 6.0
+			row_sb.content_margin_top = 4.0
+			row_sb.content_margin_bottom = 4.0
+			row_panel.add_theme_stylebox_override("panel", row_sb)
 
-	if best_uid >= 0:
-		game_ref.request_equip_uid(best_uid)
+			var row: HBoxContainer = HBoxContainer.new()
+			row.add_theme_constant_override("separation", 6)
+			row_panel.add_child(row)
+
+			var name_lbl: Label = Label.new()
+			name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			name_lbl.text = "%s Lv.%d" % [str(cand.get("name", "")), int(cand.get("ilvl", 1))]
+			name_lbl.add_theme_font_size_override("font_size", 11)
+			name_lbl.add_theme_color_override("font_color", ThemePaletteScript.get_rarity_color(int(cand.get("rarity", 0))))
+			row.add_child(name_lbl)
+
+			var delta_pct: float = float(cand.get("delta_pct", 0.0))
+			var delta_lbl: Label = Label.new()
+			delta_lbl.custom_minimum_size = Vector2(64.0, 0.0)
+			delta_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+			delta_lbl.add_theme_font_size_override("font_size", 11)
+			if delta_pct > 0.05:
+				delta_lbl.text = "+%.1f%%" % delta_pct
+				delta_lbl.add_theme_color_override("font_color", ThemePaletteScript.color_old_gold_bright())
+			elif delta_pct < -0.05:
+				delta_lbl.text = "%.1f%%" % delta_pct
+				delta_lbl.add_theme_color_override("font_color", Color.html("#B84A39"))
+			else:
+				delta_lbl.text = "0.0%"
+				delta_lbl.add_theme_color_override("font_color", ThemePaletteScript.color_ash_gray())
+			row.add_child(delta_lbl)
+
+			var equip_btn: Button = Button.new()
+			equip_btn.text = "装备"
+			equip_btn.custom_minimum_size = Vector2(44.0, 22.0)
+			equip_btn.add_theme_font_size_override("font_size", 11)
+			var item_uid: int = int(cand.get("uid", -1))
+			equip_btn.pressed.connect(_on_compare_equip_pressed.bind(item_uid))
+			row.add_child(equip_btn)
+
+			equip_compare_list.add_child(row_panel)
+
+	equip_compare_panel.visible = true
+
+func close_equip_compare_panel() -> void:
+	_active_compare_slot = ""
+	if equip_compare_panel != null:
+		equip_compare_panel.visible = false
+
+func _on_compare_equip_pressed(item_uid: int) -> void:
+	if game_ref != null and item_uid >= 0:
+		game_ref.request_equip_uid(item_uid)
+	close_equip_compare_panel()
+
+func _on_equip_slot_clicked(slot_key: String) -> void:
+	if equip_compare_panel != null and equip_compare_panel.visible and _active_compare_slot == slot_key:
+		close_equip_compare_panel()
+	else:
+		open_equip_compare_panel(slot_key)
 
 func _on_btn_passthrough_pressed() -> void:
 	if desktop_window == null:
