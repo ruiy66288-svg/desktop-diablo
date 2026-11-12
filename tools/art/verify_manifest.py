@@ -211,6 +211,13 @@ def verify_repository_art(
         ext = file_path.suffix.lower()
         if ext in {".gdshader", ".import", ".tres", ".tscn", ".gd"}:
             continue
+        if ext == ".json":
+            rel_posix = file_path.relative_to(root_abs).as_posix()
+            paired_png_rel = rel_posix[:-5] + ".png"
+            if rel_posix.startswith("assets/art/vfx/") and paired_png_rel in manifest_by_path:
+                continue
+            errors.append(f"发现未关联已登记 VFX 图集的 JSON 文件: {rel_posix}")
+            continue
         if ext in RASTER_AND_VECTOR_EXTS:
             disk_asset_files.append(file_path)
             rel_posix = file_path.relative_to(root_abs).as_posix()
