@@ -16,7 +16,8 @@ const TechNodeDefScript = preload("res://simulation/tech/TechNodeDef.gd")
 enum TabKind {
 	CREDIT = 0,
 	TECH = 1,
-	TOLL = 2
+	TOLL = 2,
+	PRESTIGE = 3
 }
 
 var _game_ref: GameScript = null
@@ -26,6 +27,7 @@ var _selected_util: float = 1.0
 var _btn_tab_credit: Button = null
 var _btn_tab_tech: Button = null
 var _btn_tab_toll: Button = null
+var _btn_tab_prestige: Button = null
 var _content_box: VBoxContainer = null
 
 # Credit tab widgets
@@ -49,6 +51,12 @@ var _toll_view: VBoxContainer = null
 var _lbl_toll_status: Label = null
 var _toll_progress_bar: ProgressBar = null
 var _lbl_toll_hint: Label = null
+
+# Prestige tab widgets
+var _prestige_view: VBoxContainer = null
+var _lbl_prestige_preview: Label = null
+var _lbl_offline_summary: Label = null
+var _btn_prestige: Button = null
 
 func _init() -> void:
 	name = "SystemsDrawer"
@@ -75,7 +83,8 @@ func bind_game(p_game: GameScript) -> void:
 
 func open_tab(tab_idx: int = -1) -> void:
 	if tab_idx >= 0:
-		_active_tab = clampi(tab_idx, TabKind.CREDIT, TabKind.TOLL)
+		_active_tab = clampi(tab_idx, TabKind.CREDIT, TabKind.PRESTIGE)
+		_sync_tab_visibility()
 	visible = true
 	refresh_view()
 
@@ -112,9 +121,11 @@ func _build_ui() -> void:
 	_btn_tab_credit = _make_tab_button("信贷", TabKind.CREDIT)
 	_btn_tab_tech = _make_tab_button("科技", TabKind.TECH)
 	_btn_tab_toll = _make_tab_button("门票", TabKind.TOLL)
+	_btn_tab_prestige = _make_tab_button("转生", TabKind.PRESTIGE)
 	header.add_child(_btn_tab_credit)
 	header.add_child(_btn_tab_tech)
 	header.add_child(_btn_tab_toll)
+	header.add_child(_btn_tab_prestige)
 
 	var close_btn: Button = Button.new()
 	close_btn.name = "BtnCloseDrawer"
@@ -132,6 +143,7 @@ func _build_ui() -> void:
 	_build_credit_tab()
 	_build_tech_tab()
 	_build_toll_tab()
+	_build_prestige_tab()
 	_sync_tab_visibility()
 
 func _make_tab_button(title: String, tab_idx: int) -> Button:
@@ -253,6 +265,41 @@ func _build_toll_tab() -> void:
 	_lbl_toll_hint.add_theme_color_override("font_color", ThemePaletteScript.color_old_gold_bright())
 	_toll_view.add_child(_lbl_toll_hint)
 
+func _build_prestige_tab() -> void:
+	_prestige_view = VBoxContainer.new()
+	_prestige_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_prestige_view.add_theme_constant_override("separation", 8)
+	_content_box.add_child(_prestige_view)
+
+	_lbl_prestige_preview = Label.new()
+	_lbl_prestige_preview.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_lbl_prestige_preview.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_lbl_prestige_preview.add_theme_font_size_override("font_size", 11)
+	_lbl_prestige_preview.add_theme_color_override("font_color", ThemePaletteScript.color_bone_white())
+	_prestige_view.add_child(_lbl_prestige_preview)
+
+	_lbl_offline_summary = Label.new()
+	_lbl_offline_summary.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_lbl_offline_summary.add_theme_font_size_override("font_size", 10)
+	_lbl_offline_summary.add_theme_color_override("font_color", ThemePaletteScript.color_old_gold_bright())
+	_prestige_view.add_child(_lbl_offline_summary)
+
+	_btn_prestige = Button.new()
+	_btn_prestige.name = "BtnSoulPrestige"
+	_btn_prestige.text = "灵魂转生 (保留身上 6 件装备与科技)"
+	_btn_prestige.custom_minimum_size = Vector2(0.0, 26.0)
+	_btn_prestige.add_theme_font_size_override("font_size", 11)
+	_btn_prestige.pressed.connect(_on_prestige_pressed)
+	_prestige_view.add_child(_btn_prestige)
+
+func get_prestige_preview_snapshot() -> Dictionary:
+	if _game_ref == null:
+		return {"can_prestige": false}
+	var state: SimStateScript = _game_ref.get_sim_state()
+	if state == null:
+		return {"can_prestige": false}
+	return state.get_soul_prestige_preview()
+
 func _on_tab_selected(tab_idx: int) -> void:
 	_active_tab = tab_idx
 	_sync_tab_visibility()
@@ -262,6 +309,7 @@ func _sync_tab_visibility() -> void:
 	_credit_view.visible = (_active_tab == TabKind.CREDIT)
 	_tech_view.visible = (_active_tab == TabKind.TECH)
 	_toll_view.visible = (_active_tab == TabKind.TOLL)
+	_prestige_view.visible = (_active_tab == TabKind.PRESTIGE)
 
 	_btn_tab_credit.add_theme_color_override(
 		"font_color",
@@ -274,6 +322,10 @@ func _sync_tab_visibility() -> void:
 	_btn_tab_toll.add_theme_color_override(
 		"font_color",
 		ThemePaletteScript.color_old_gold_bright() if _active_tab == TabKind.TOLL else ThemePaletteScript.color_bone_shadow()
+	)
+	_btn_tab_prestige.add_theme_color_override(
+		"font_color",
+		ThemePaletteScript.color_old_gold_bright() if _active_tab == TabKind.PRESTIGE else ThemePaletteScript.color_bone_shadow()
 	)
 
 func refresh_view() -> void:
@@ -290,6 +342,8 @@ func refresh_view() -> void:
 			_refresh_tech_tab(state)
 		TabKind.TOLL:
 			_refresh_toll_tab(state)
+		TabKind.PRESTIGE:
+			_refresh_prestige_tab(state)
 
 func _refresh_credit_tab(state: SimStateScript) -> void:
 	var stage: int = state.get_active_stage()
@@ -428,6 +482,38 @@ func _is_node_queued(entries: Array, node_id: String) -> bool:
 		if str(entry.get("node_id", "")) == node_id:
 			return true
 	return false
+
+func _refresh_prestige_tab(state: SimStateScript) -> void:
+	var pv: Dictionary = state.get_soul_prestige_preview()
+	var can_prestige: bool = bool(pv.get("can_prestige", false))
+	var pending_log: float = float(pv.get("pending_souls_log", NumScript.ZERO))
+	var after_log: float = float(pv.get("souls_after_log", NumScript.ZERO))
+	var debt_add: float = float(pv.get("legacy_debt_added_minutes", 0.0))
+	var debt_total: float = float(pv.get("legacy_debt_total_minutes", 0.0))
+	var kept_eq: int = int(pv.get("kept_equipped_count", 0))
+
+	_lbl_prestige_preview.text = "本轮最高: 第 %d 层  |  历史最高: 第 %d 层\n预估灵魂: +%s (转生后总计 %s)\n宿债折算: +%.1f 分 (累计 %.1f 分)\n保留装备: %d / 6 件  |  科技: 全部保留" % [
+		state.run_best,
+		state.all_time_best,
+		NumScript.format_num(pending_log),
+		NumScript.format_num(after_log),
+		debt_add,
+		debt_total,
+		kept_eq
+	]
+	_btn_prestige.disabled = not can_prestige
+
+	var off: Dictionary = _game_ref.get_last_offline_summary()
+	if not off.is_empty() and bool(off.get("loaded", false)):
+		var eff_s: float = float(off.get("effective_seconds", 0.0))
+		var g_log: float = float(off.get("gold_gain_log", NumScript.ZERO))
+		_lbl_offline_summary.text = "最近离线结算: %.0fs · 金币 +%s" % [eff_s, NumScript.format_num(g_log)]
+	else:
+		_lbl_offline_summary.text = "自动存档已就绪（退出/每 30 秒原子保存）"
+
+func _on_prestige_pressed() -> void:
+	if _game_ref != null:
+		_game_ref.request_soul_prestige()
 
 func _on_research_node_pressed(node_id: String) -> void:
 	if _game_ref != null:

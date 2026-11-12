@@ -10,13 +10,18 @@ const BalanceScript = preload("res://simulation/Balance.gd")
 const CommandScript = preload("res://simulation/commands/Command.gd")
 const PresentationBusScript = preload("res://presentation/PresentationBus.gd")
 const SimEventScript = preload("res://simulation/events/SimEvent.gd")
+const SaveServiceScript = preload("res://persistence/SaveService.gd")
+const OfflineCalcScript = preload("res://offline/OfflineCalc.gd")
 
 const AUTOLOAD_NODE_NAME: String = "GameAutoload"
 const DEFAULT_MASTER_SEED: int = 20261112
 const UNCONSUMED_BUS_SAFETY_CAP: int = 512
+const DEFAULT_SAVE_PATH: String = "user://save.json"
+const AUTO_SAVE_INTERVAL_SEC: float = 30.0
 
 signal sim_ticked(steps: int)
 signal restored_from_minimized(summary: Dictionary)
+signal offline_settled(summary: Dictionary)
 
 var _state: SimStateScript = null
 var _runner: SimRunnerScript = null
@@ -25,6 +30,10 @@ var _was_minimized: bool = false
 var _force_minimized_for_test: bool = false
 var _auto_tick_enabled: bool = true
 var _last_minimized_summary: Dictionary = {}
+var _last_offline_summary: Dictionary = {}
+var _auto_save_enabled: bool = false
+var _auto_save_path: String = DEFAULT_SAVE_PATH
+var _auto_save_elapsed: float = 0.0
 
 static func resolve_from_tree(tree: SceneTree) -> Game:
 	if tree == null or tree.root == null:
@@ -48,15 +57,25 @@ func initialize_session(seed_val: int = DEFAULT_MASTER_SEED, p_balance: BalanceS
 	_state = SimStateScript.new(seed_val, bal)
 	if _state.tech != null:
 		_state.tech.debug_seconds_mode = debug_seconds_mode
-	_runner = SimRunnerScript.new(_state)
+	_runner = SimRunnerScript.new(_state, Callable(OfflineCalcScript, "handle_long_gap"))
 	_bus = PresentationBusScript.new()
 	_was_minimized = false
 	_last_minimized_summary = {}
+	_last_offline_summary = {}
 
 func _process(delta: float) -> void:
 	if not _auto_tick_enabled:
 		return
 	advance_frame(delta)
+	if _auto_save_enabled:
+		_auto_save_elapsed += delta
+		if _auto_save_elapsed >= AUTO_SAVE_INTERVAL_SEC:
+			_auto_save_elapsed = 0.0
+			save_current_game(_auto_save_path)
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_CLOSE_REQUEST and _auto_save_enabled:
+		save_current_game(_auto_save_path)
 
 ## 单帧推进入口：驱动 10Hz SimRunner 并在最小化状态下持续排空消费 PresentationBus (勘误 E8 & Q10)
 func advance_frame(delta: float) -> int:
@@ -157,3 +176,52 @@ func request_start_research(node_id: String, now_unix: float = -1.0) -> void:
 func request_settle_research(now_unix: float = -1.0) -> void:
 	var ts: float = now_unix if now_unix >= 0.0 else Time.get_unix_time_from_system()
 	submit_command(CommandScript.make_settle_research(ts))
+
+func enable_auto_persistence(save_path: String = DEFAULT_SAVE_PATH) -> void:
+	_auto_save_path = save_path
+	_auto_save_enabled = true
+	_auto_save_elapsed = 0.0
+
+func get_last_offline_summary() -> Dictionary:
+	return _last_offline_summary
+
+func save_current_game(save_path: String = DEFAULT_SAVE_PATH, now_unix: float = -1.0) -> Error:
+	if _state == null:
+		return ERR_UNCONFIGURED
+	var err: Error = SaveServiceScript.save_to_file(_state, save_path)
+	if err == OK:
+		var ts: float = now_unix if now_unix >= 0.0 else Time.get_unix_time_from_system()
+		var meta_path: String = save_path + ".meta.json"
+		var f: FileAccess = FileAccess.open(meta_path, FileAccess.WRITE)
+		if f != null:
+			f.store_string(JSON.stringify({"last_save_unix": ts}))
+			f.close()
+	return err
+
+func load_saved_game(save_path: String = DEFAULT_SAVE_PATH, now_unix: float = -1.0, p_balance: BalanceScript = null) -> Dictionary:
+	var bal: BalanceScript = p_balance if p_balance != null else (BalanceScript.load_default() as BalanceScript)
+	var loaded: SimStateScript = SaveServiceScript.load_from_file(save_path, bal)
+	if loaded == null:
+		return {"loaded": false}
+	_state = loaded
+	_runner = SimRunnerScript.new(_state, Callable(OfflineCalcScript, "handle_long_gap"))
+	_bus = PresentationBusScript.new()
+	_was_minimized = false
+	_last_minimized_summary = {}
+
+	var ts: float = now_unix if now_unix >= 0.0 else Time.get_unix_time_from_system()
+	var last_unix: float = ts
+	var meta_path: String = save_path + ".meta.json"
+	if FileAccess.file_exists(meta_path):
+		var mf: FileAccess = FileAccess.open(meta_path, FileAccess.READ)
+		if mf != null:
+			var parsed: Variant = JSON.parse_string(mf.get_as_text())
+			mf.close()
+			if parsed is Dictionary:
+				last_unix = float((parsed as Dictionary).get("last_save_unix", ts))
+
+	var elapsed: float = maxf(0.0, ts - last_unix)
+	_last_offline_summary = OfflineCalcScript.settle(_state, elapsed, ts)
+	_last_offline_summary["loaded"] = true
+	offline_settled.emit(_last_offline_summary)
+	return _last_offline_summary

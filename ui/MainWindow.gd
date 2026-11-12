@@ -37,8 +37,8 @@ const EQUIP_TOP_Y: float = 424.0
 
 const MAIN_CARD_POS: Vector2 = Vector2(24.0, 84.0)
 const MAIN_CARD_SIZE: Vector2 = Vector2(176.0, 220.0)
-const BOSS_CARD_POS: Vector2 = Vector2(76.0, 64.0)
-const BOSS_CARD_SIZE: Vector2 = Vector2(208.0, 260.0)
+const BOSS_CARD_POS: Vector2 = Vector2(76.0, 66.0)
+const BOSS_CARD_SIZE: Vector2 = Vector2(208.0, 256.0)
 const QUEUE_CARD_1_POS: Vector2 = Vector2(252.0, 94.0)
 const QUEUE_CARD_2_POS: Vector2 = Vector2(252.0, 198.0)
 const QUEUE_CARD_SIZE: Vector2 = Vector2(72.0, 90.0)
@@ -139,6 +139,10 @@ func _ready() -> void:
 			bind_game(fallback_game)
 
 	_parse_capture_user_args()
+	if DisplayServer.get_name() != "headless" and _capture_preview_path.is_empty() and game_ref != null:
+		if FileAccess.file_exists(GameScript.DEFAULT_SAVE_PATH):
+			game_ref.load_saved_game(GameScript.DEFAULT_SAVE_PATH)
+		game_ref.enable_auto_persistence(GameScript.DEFAULT_SAVE_PATH)
 	refresh_hud()
 
 ## 绑定外部或全局 Game 会话协调器（支持测试环境注入独立确定性会话）

@@ -122,6 +122,17 @@ func _init() -> void:
 				if bool(d5_ui_test_script.call("run")):
 					passed_count += 1
 
+	# 12. D6 UI (自动接入): 若 res://tests/test_d6_ui.gd 存在则执行
+	if ResourceLoader.exists("res://tests/test_d6_ui.gd"):
+		var d6_ui_test_script: GDScript = ResourceLoader.load("res://tests/test_d6_ui.gd") as GDScript
+		if d6_ui_test_script != null:
+			total_count += 1
+			if not d6_ui_test_script.can_instantiate():
+				printerr("[TestRunner] 可选测试脚本编译失败，计为未通过: " + d6_ui_test_script.resource_path)
+			else:
+				if bool(d6_ui_test_script.call("run")):
+					passed_count += 1
+
 	print("--------------------------------------------------")
 	if passed_count == total_count:
 		print("[TestRunner] 全部测试通过! 通过数 / 总数: %d / %d" % [passed_count, total_count])
