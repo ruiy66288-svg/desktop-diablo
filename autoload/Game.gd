@@ -43,9 +43,11 @@ func _ready() -> void:
 	set_process(true)
 
 ## 初始化或重置模拟会话
-func initialize_session(seed_val: int = DEFAULT_MASTER_SEED, p_balance: BalanceScript = null) -> void:
+func initialize_session(seed_val: int = DEFAULT_MASTER_SEED, p_balance: BalanceScript = null, debug_seconds_mode: bool = false) -> void:
 	var bal: BalanceScript = p_balance if p_balance != null else (BalanceScript.load_default() as BalanceScript)
 	_state = SimStateScript.new(seed_val, bal)
+	if _state.tech != null:
+		_state.tech.debug_seconds_mode = debug_seconds_mode
 	_runner = SimRunnerScript.new(_state)
 	_bus = PresentationBusScript.new()
 	_was_minimized = false
@@ -78,6 +80,8 @@ func advance_frame(delta: float) -> int:
 			_bus.drain_for_minimized()
 
 	if steps > 0:
+		if _state.research_queue != null and not _state.research_queue.entries.is_empty():
+			_runner.enqueue_command(CommandScript.make_settle_research(Time.get_unix_time_from_system()))
 		sim_ticked.emit(steps)
 	return steps
 
@@ -145,3 +149,11 @@ func request_repay_credit(amount_log: float) -> void:
 
 func request_soul_prestige() -> void:
 	submit_command(CommandScript.make_soul_prestige())
+
+func request_start_research(node_id: String, now_unix: float = -1.0) -> void:
+	var ts: float = now_unix if now_unix >= 0.0 else Time.get_unix_time_from_system()
+	submit_command(CommandScript.make_start_research(node_id, ts))
+
+func request_settle_research(now_unix: float = -1.0) -> void:
+	var ts: float = now_unix if now_unix >= 0.0 else Time.get_unix_time_from_system()
+	submit_command(CommandScript.make_settle_research(ts))

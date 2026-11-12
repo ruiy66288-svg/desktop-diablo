@@ -21,6 +21,7 @@ const VfxManagerScript = preload("res://presentation/vfx/VfxManager.gd")
 const SfxMixerScript = preload("res://presentation/audio/SfxMixer.gd")
 const DryRunScript = preload("res://simulation/commands/DryRun.gd")
 const SignatureAffixesScript = preload("res://simulation/affix/SignatureAffixes.gd")
+const SystemsDrawerScript = preload("res://ui/SystemsDrawer.gd")
 
 const WINDOW_WIDTH: float = 360.0
 const WINDOW_HEIGHT: float = 480.0
@@ -51,7 +52,9 @@ var paper_noise_rect: TextureRect = null
 var title_bar: Control = null
 var label_title: Label = null
 var btn_passthrough: Button = null
+var btn_systems: Button = null
 var btn_close: Button = null
+var systems_drawer: SystemsDrawerScript = null
 
 var label_run_best: Label = null
 var label_stage_detail: Label = null
@@ -143,6 +146,8 @@ func bind_game(p_game: GameScript) -> void:
 	if game_ref != null and game_ref.restored_from_minimized.is_connected(_on_restored_from_minimized):
 		game_ref.restored_from_minimized.disconnect(_on_restored_from_minimized)
 	game_ref = p_game
+	if systems_drawer != null:
+		systems_drawer.bind_game(game_ref)
 	if game_ref != null and not game_ref.restored_from_minimized.is_connected(_on_restored_from_minimized):
 		game_ref.restored_from_minimized.connect(_on_restored_from_minimized)
 	if label_run_best != null:
@@ -247,6 +252,26 @@ func _build_window_hierarchy() -> void:
 	label_title.add_theme_font_size_override("font_size", 11)
 	label_title.add_theme_color_override("font_color", ThemePaletteScript.color_bone_shadow())
 	title_bar.add_child(label_title)
+
+	btn_systems = Button.new()
+	btn_systems.name = "BtnSystems"
+	btn_systems.position = Vector2(WINDOW_WIDTH - 108.0, 3.0)
+	btn_systems.size = Vector2(36.0, 18.0)
+	btn_systems.focus_mode = Control.FOCUS_NONE
+	btn_systems.text = "系统"
+	btn_systems.tooltip_text = "信贷 / 科技 / 门票"
+	btn_systems.add_theme_font_size_override("font_size", 10)
+	btn_systems.add_theme_color_override("font_color", ThemePaletteScript.color_old_gold_bright())
+	btn_systems.add_theme_stylebox_override(
+		"normal",
+		ThemePaletteScript.make_button_style(ThemePaletteScript.color_card_bg(), ThemePaletteScript.color_iron_gray(), 3)
+	)
+	btn_systems.add_theme_stylebox_override(
+		"hover",
+		ThemePaletteScript.make_button_style(ThemePaletteScript.color_card_bg(), ThemePaletteScript.color_old_gold(), 3)
+	)
+	btn_systems.pressed.connect(_on_btn_systems_pressed)
+	title_bar.add_child(btn_systems)
 
 	btn_passthrough = Button.new()
 	btn_passthrough.name = "BtnPassthrough"
@@ -485,6 +510,11 @@ func _build_window_hierarchy() -> void:
 	# 8. WP-12 暗金木刻风装备对比与 DryRun 换装浮层 (#16161C 底 + #B08D57 边框)
 	_build_equip_compare_panel()
 
+	# 9. D5 系统抽屉（信贷 / 科技 / 第100层门票与护盾）
+	systems_drawer = SystemsDrawerScript.new()
+	systems_drawer.bind_game(game_ref)
+	add_child(systems_drawer)
+
 ## 排空并消费 PresentationBus 事件，驱动喷泉弹道、单层飘字、签名特效与音效预算 (WP-08)
 func _consume_presentation_events() -> void:
 	if sfx_mixer != null:
@@ -712,6 +742,10 @@ func refresh_hud() -> void:
 		var frenzy_stacks: int = state.buffs.get_stacks("killing_frenzy") if state.buffs != null else 0
 		vfx_manager.update_killing_frenzy_afterimage(frenzy_stacks, Rect2(main_card.position, main_card.size))
 
+	# 7. D5 系统抽屉只读刷新
+	if systems_drawer != null and systems_drawer.visible:
+		systems_drawer.refresh_view()
+
 func _on_btn_upgrade_atk_pressed() -> void:
 	if game_ref != null:
 		game_ref.request_buy_atk_upgrade(1)
@@ -904,7 +938,25 @@ func _on_compare_equip_pressed(item_uid: int) -> void:
 		game_ref.request_equip_uid(item_uid)
 	close_equip_compare_panel()
 
+func _on_btn_systems_pressed() -> void:
+	if systems_drawer == null:
+		return
+	if systems_drawer.visible:
+		close_systems_drawer()
+	else:
+		open_systems_drawer(-1)
+
+func open_systems_drawer(tab_idx: int = -1) -> void:
+	close_equip_compare_panel()
+	if systems_drawer != null:
+		systems_drawer.open_tab(tab_idx)
+
+func close_systems_drawer() -> void:
+	if systems_drawer != null:
+		systems_drawer.close_drawer()
+
 func _on_equip_slot_clicked(slot_key: String) -> void:
+	close_systems_drawer()
 	if equip_compare_panel != null and equip_compare_panel.visible and _active_compare_slot == slot_key:
 		close_equip_compare_panel()
 	else:
