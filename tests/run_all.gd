@@ -177,6 +177,28 @@ func _init() -> void:
 				if bool(p2_plat_script.call("run")):
 					passed_count += 1
 
+	# 17. WP-P2-SIM-2 稀有收藏、永久图鉴、套装与经验校准离线结算
+	if ResourceLoader.exists("res://tests/test_p2_collection_codex_offline.gd"):
+		var p2_sim2_script: GDScript = ResourceLoader.load("res://tests/test_p2_collection_codex_offline.gd") as GDScript
+		if p2_sim2_script != null:
+			total_count += 1
+			if not p2_sim2_script.can_instantiate():
+				printerr("[TestRunner] 可选测试脚本编译失败，计为未通过: " + p2_sim2_script.resource_path)
+			else:
+				if bool(p2_sim2_script.call("run")):
+					passed_count += 1
+
+	# 18. WP-P2-UI-1 阶段 2 新美术接入、百层机制与卡墙高亮 UI、深渊转生与魔盒威能萃取台 UI
+	if ResourceLoader.exists("res://tests/test_p2_ui_abyss_mechanics.gd"):
+		var p2_ui_script: GDScript = ResourceLoader.load("res://tests/test_p2_ui_abyss_mechanics.gd") as GDScript
+		if p2_ui_script != null:
+			total_count += 1
+			if not p2_ui_script.can_instantiate():
+				printerr("[TestRunner] 可选测试脚本编译失败，计为未通过: " + p2_ui_script.resource_path)
+			else:
+				if bool(p2_ui_script.call("run")):
+					passed_count += 1
+
 	print("--------------------------------------------------")
 	if passed_count == total_count:
 		print("[TestRunner] 全部测试通过! 通过数 / 总数: %d / %d" % [passed_count, total_count])

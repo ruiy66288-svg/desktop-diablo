@@ -83,7 +83,8 @@ func _refresh_slot_styles() -> void:
 	add_theme_stylebox_override("pressed", hover_style)
 	add_theme_stylebox_override("disabled", normal_style)
 
-	var tex: Texture2D = ArtRegistryScript.get_item_icon_texture(slot_key)
+	var is_uniq_or_primal: bool = has_equipped_item and item_rarity >= 3
+	var tex: Texture2D = ArtRegistryScript.get_item_icon_texture(slot_key, is_uniq_or_primal)
 	_icon_rect.texture = tex
 	_icon_rect.visible = (tex != null)
 

@@ -22,6 +22,7 @@ const AUTO_SAVE_INTERVAL_SEC: float = 30.0
 signal sim_ticked(steps: int)
 signal restored_from_minimized(summary: Dictionary)
 signal offline_settled(summary: Dictionary)
+signal mute_toggled(muted: bool)
 
 var _state: SimStateScript = null
 var _runner: SimRunnerScript = null
@@ -34,6 +35,7 @@ var _last_offline_summary: Dictionary = {}
 var _auto_save_enabled: bool = false
 var _auto_save_path: String = DEFAULT_SAVE_PATH
 var _auto_save_elapsed: float = 0.0
+var _audio_muted: bool = false
 
 static func resolve_from_tree(tree: SceneTree) -> Game:
 	if tree == null or tree.root == null:
@@ -74,7 +76,7 @@ func _process(delta: float) -> void:
 			save_current_game(_auto_save_path)
 
 func _notification(what: int) -> void:
-	if what == NOTIFICATION_WM_CLOSE_REQUEST and _auto_save_enabled:
+	if what == NOTIFICATION_WM_CLOSE_REQUEST:
 		save_current_game(_auto_save_path)
 
 ## 单帧推进入口：驱动 10Hz SimRunner 并在最小化状态下持续排空消费 PresentationBus (勘误 E8 & Q10)
@@ -176,6 +178,33 @@ func request_start_research(node_id: String, now_unix: float = -1.0) -> void:
 func request_settle_research(now_unix: float = -1.0) -> void:
 	var ts: float = now_unix if now_unix >= 0.0 else Time.get_unix_time_from_system()
 	submit_command(CommandScript.make_settle_research(ts))
+
+func request_abyss_prestige(extract_power_id: String = "") -> void:
+	submit_command(CommandScript.make_abyss_prestige(extract_power_id))
+
+func request_equip_vault_power(affix_id: String) -> void:
+	submit_command(CommandScript.make_equip_vault_power(affix_id))
+
+func request_unequip_vault_power(affix_id: String) -> void:
+	submit_command(CommandScript.make_unequip_vault_power(affix_id))
+
+func request_ack_signal(kind: int) -> void:
+	submit_command(CommandScript.make_ack_signal(kind))
+
+func set_audio_muted(muted: bool) -> bool:
+	_audio_muted = muted
+	if DisplayServer.get_name() != "headless" and AudioServer.get_bus_count() > 0:
+		AudioServer.set_bus_mute(0, _audio_muted)
+	mute_toggled.emit(_audio_muted)
+	return _audio_muted
+
+func toggle_audio_mute() -> bool:
+	return set_audio_muted(not _audio_muted)
+
+func is_audio_muted() -> bool:
+	if DisplayServer.get_name() != "headless" and AudioServer.get_bus_count() > 0:
+		_audio_muted = AudioServer.is_bus_mute(0)
+	return _audio_muted
 
 func enable_auto_persistence(save_path: String = DEFAULT_SAVE_PATH) -> void:
 	_auto_save_path = save_path

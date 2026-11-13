@@ -26,6 +26,8 @@ const ArtRegistryScript = preload("res://ui/ArtRegistry.gd")
 const InventoryFilterPanelScript = preload("res://ui/InventoryFilterPanel.gd")
 const AttentionGlowScript = preload("res://ui/AttentionGlow.gd")
 const SfxBankScript = preload("res://presentation/audio/SfxBank.gd")
+const BandRulesScript = preload("res://simulation/mechanics/BandRules.gd")
+const MechanicDefScript = preload("res://simulation/mechanics/MechanicDef.gd")
 
 const WINDOW_WIDTH: float = 360.0
 const WINDOW_HEIGHT: float = 480.0
@@ -68,6 +70,14 @@ var label_run_best: Label = null
 var label_stage_detail: Label = null
 var label_mob_name: Label = null
 var hp_bar: ProgressBar = null
+
+var mechanic_status_bar: Control = null
+var lbl_mechanic_status: Label = null
+var mini_shield_bar: ProgressBar = null
+var lbl_mechanic_tag: Label = null
+var wall_hint_banner: PanelContainer = null
+var lbl_wall_hint: Label = null
+var _last_wall_hint_active: bool = false
 
 var battlefield_layer: Control = null
 var main_card: MonsterCardViewScript = null
@@ -117,6 +127,10 @@ func _ready() -> void:
 		desktop_window.name = "DesktopWindow"
 		add_child(desktop_window)
 
+	if desktop_window != null and desktop_window.system_tray != null:
+		if not desktop_window.system_tray.mute_toggled.is_connected(_on_tray_mute_toggled):
+			desktop_window.system_tray.mute_toggled.connect(_on_tray_mute_toggled)
+
 	if loot_fountain == null:
 		loot_fountain = LootFountainScript.new()
 		loot_fountain.name = "LootFountain"
@@ -165,13 +179,19 @@ func _ready() -> void:
 func bind_game(p_game: GameScript) -> void:
 	if game_ref != null and game_ref.restored_from_minimized.is_connected(_on_restored_from_minimized):
 		game_ref.restored_from_minimized.disconnect(_on_restored_from_minimized)
+	if game_ref != null and game_ref.mute_toggled.is_connected(_on_game_mute_toggled):
+		game_ref.mute_toggled.disconnect(_on_game_mute_toggled)
 	game_ref = p_game
 	if systems_drawer != null:
 		systems_drawer.bind_game(game_ref)
 	if inventory_panel != null:
 		inventory_panel.bind_game(game_ref)
+	if desktop_window != null:
+		desktop_window.bind_game(game_ref)
 	if game_ref != null and not game_ref.restored_from_minimized.is_connected(_on_restored_from_minimized):
 		game_ref.restored_from_minimized.connect(_on_restored_from_minimized)
+	if game_ref != null and not game_ref.mute_toggled.is_connected(_on_game_mute_toggled):
+		game_ref.mute_toggled.connect(_on_game_mute_toggled)
 	if label_run_best != null:
 		refresh_hud()
 
@@ -358,6 +378,18 @@ func _build_window_hierarchy() -> void:
 	paper_noise_rect.stretch_mode = TextureRect.STRETCH_TILE
 	background_panel.add_child(paper_noise_rect)
 
+	# 1c. 木刻排线平铺底纹 (04 §3 #6: 叠加 tex_woodcut_hatch_256, 不透明度 0.08-0.12)
+	var hatch_tex: Texture2D = ArtRegistryScript.get_woodcut_hatch_texture()
+	if hatch_tex != null:
+		var hatch_rect: TextureRect = TextureRect.new()
+		hatch_rect.name = "WoodcutHatchOverlay"
+		hatch_rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		hatch_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		hatch_rect.texture = hatch_tex
+		hatch_rect.stretch_mode = TextureRect.STRETCH_TILE
+		hatch_rect.modulate = Color(1.0, 1.0, 1.0, 0.09)
+		background_panel.add_child(hatch_rect)
+
 	# 2. 0–24 顶部程序化标题栏（支持拖拽、战场穿透切换、退出）
 	title_bar = Control.new()
 	title_bar.name = "TitleBar"
@@ -530,6 +562,80 @@ func _build_window_hierarchy() -> void:
 	label_mob_name.add_theme_font_size_override("font_size", 10)
 	label_mob_name.add_theme_color_override("font_color", ThemePaletteScript.color_ash_gray())
 	header_root.add_child(label_mob_name)
+
+	# 3b. 62–80 区间机制实时状态栏 + 卡墙提示横幅 (02 §7.1–§7.2)
+	mechanic_status_bar = Control.new()
+	mechanic_status_bar.name = "MechanicStatusBar"
+	mechanic_status_bar.position = Vector2(14.0, 62.0)
+	mechanic_status_bar.size = Vector2(WINDOW_WIDTH - 28.0, 18.0)
+	mechanic_status_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(mechanic_status_bar)
+
+	var mech_row: HBoxContainer = HBoxContainer.new()
+	mech_row.name = "MechRow"
+	mech_row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	mech_row.add_theme_constant_override("separation", 6)
+	mechanic_status_bar.add_child(mech_row)
+
+	lbl_mechanic_status = Label.new()
+	lbl_mechanic_status.name = "LabelMechanicStatus"
+	lbl_mechanic_status.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	lbl_mechanic_status.text = "1–100 层 · 常规试炼"
+	lbl_mechanic_status.add_theme_font_size_override("font_size", 9)
+	lbl_mechanic_status.add_theme_color_override("font_color", ThemePaletteScript.color_ash_gray())
+	mech_row.add_child(lbl_mechanic_status)
+
+	mini_shield_bar = ProgressBar.new()
+	mini_shield_bar.name = "MiniShieldBar"
+	mini_shield_bar.custom_minimum_size = Vector2(56.0, 8.0)
+	mini_shield_bar.size = Vector2(56.0, 8.0)
+	mini_shield_bar.min_value = 0.0
+	mini_shield_bar.max_value = 100.0
+	mini_shield_bar.value = 100.0
+	mini_shield_bar.show_percentage = false
+	mini_shield_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	mini_shield_bar.visible = false
+	var shield_track: StyleBoxFlat = ThemePaletteScript.make_card_style(ThemePaletteScript.color_iron_gray(), 2, 1)
+	var shield_fill: StyleBoxFlat = StyleBoxFlat.new()
+	shield_fill.bg_color = Color.html("#A8C8E8")
+	shield_fill.corner_radius_top_left = 2
+	shield_fill.corner_radius_top_right = 2
+	shield_fill.corner_radius_bottom_left = 2
+	shield_fill.corner_radius_bottom_right = 2
+	mini_shield_bar.add_theme_stylebox_override("background", shield_track)
+	mini_shield_bar.add_theme_stylebox_override("fill", shield_fill)
+	mech_row.add_child(mini_shield_bar)
+
+	lbl_mechanic_tag = Label.new()
+	lbl_mechanic_tag.name = "LabelMechanicTag"
+	lbl_mechanic_tag.text = ""
+	lbl_mechanic_tag.add_theme_font_size_override("font_size", 9)
+	lbl_mechanic_tag.add_theme_color_override("font_color", ThemePaletteScript.color_old_gold_bright())
+	mech_row.add_child(lbl_mechanic_tag)
+
+	# 卡墙横幅 (02 §7.2: 骨白刻线提示条，点击直达背包查看破壁装备)
+	wall_hint_banner = PanelContainer.new()
+	wall_hint_banner.name = "WallHintBanner"
+	wall_hint_banner.position = Vector2(14.0, 62.0)
+	wall_hint_banner.size = Vector2(WINDOW_WIDTH - 28.0, 20.0)
+	wall_hint_banner.visible = false
+	wall_hint_banner.mouse_filter = Control.MOUSE_FILTER_STOP
+	var wall_sb: StyleBoxFlat = ThemePaletteScript.make_card_style(ThemePaletteScript.color_old_gold_bright(), 3, 1)
+	wall_sb.content_margin_left = 6.0
+	wall_sb.content_margin_right = 6.0
+	wall_sb.content_margin_top = 2.0
+	wall_sb.content_margin_bottom = 2.0
+	wall_hint_banner.add_theme_stylebox_override("panel", wall_sb)
+	wall_hint_banner.gui_input.connect(_on_wall_hint_banner_gui_input)
+	add_child(wall_hint_banner)
+
+	lbl_wall_hint = Label.new()
+	lbl_wall_hint.name = "LabelWallHint"
+	lbl_wall_hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	lbl_wall_hint.text = "【卡墙提示】 建议更换克制装备"
+	lbl_wall_hint.add_theme_font_size_override("font_size", 9)
+	lbl_wall_hint.add_theme_color_override("font_color", ThemePaletteScript.color_old_gold_bright())
+	wall_hint_banner.add_child(lbl_wall_hint)
 
 	# 4. 64–324 战场区：主怪卡 176×220 + 右侧 2 张排队卡 72×90；Boss 时 208×260 居中且隐藏排队卡 (03 §02.1)
 	battlefield_layer = Control.new()
@@ -866,6 +972,70 @@ func refresh_hud() -> void:
 			state.balance.mobs_per_stage
 		]
 		label_stage_detail.add_theme_color_override("font_color", ThemePaletteScript.color_bone_shadow())
+
+	# 1b. 区间机制与卡墙横幅同步 (02 §7.1–§7.2)
+	var wall_hint: Dictionary = state.get_wall_hint()
+	var wall_active: bool = bool(wall_hint.get("active", false))
+	if wall_active:
+		wall_hint_banner.visible = true
+		lbl_wall_hint.text = "【卡墙提示】 " + str(wall_hint.get("hint_zh", "建议更换克制装备"))
+		if not _last_wall_hint_active:
+			_last_wall_hint_active = true
+			if attention_glow != null:
+				attention_glow.push_signal(AttentionGlowScript.KIND_WALL_HINT)
+	else:
+		wall_hint_banner.visible = false
+		_last_wall_hint_active = false
+
+	var cur_stage: int = state.current_stage
+	var strengths: Dictionary = BandRulesScript.get_strengths(cur_stage, state.balance)
+	var band_idx: int = BandRulesScript.get_band_index(cur_stage, state.balance)
+
+	if strengths.is_empty() or band_idx <= 0:
+		lbl_mechanic_status.text = "1–100 层 · 常规试炼"
+		mini_shield_bar.visible = false
+		lbl_mechanic_tag.text = ""
+	else:
+		var mech_desc: String = ""
+		match band_idx:
+			1:
+				mech_desc = "100–199 护盾 · 每次限削 2%"
+			2:
+				mech_desc = "200–299 反噬 · 满40眩晕2s"
+			3:
+				mech_desc = "300–399 只吃暴击 (非暴×0.05)"
+			4:
+				mech_desc = "400–499 分身 · 50%血分身4体"
+			5:
+				mech_desc = "500–599 吞金 · 1%/s (上限50%)"
+			_:
+				mech_desc = "%d 层 · 复合变阵" % (band_idx * 100)
+
+		if band_idx <= 5 and band_idx - 1 >= 1:
+			var prev_def: MechanicDefScript = BandRulesScript.get_mechanic_def(band_idx - 1)
+			if prev_def != null:
+				mech_desc += " (+余韵:%s 30%%)" % prev_def.display_name
+		lbl_mechanic_status.text = mech_desc
+
+		if state.mob_shield_max_log > NumScript.ZERO and state.mob_shield_cur_log > NumScript.ZERO:
+			mini_shield_bar.visible = true
+			var s_ratio: float = clampf(pow(10.0, clampf(state.mob_shield_cur_log - state.mob_shield_max_log, -20.0, 0.0)), 0.0, 1.0)
+			mini_shield_bar.value = s_ratio * 100.0
+		else:
+			mini_shield_bar.visible = false
+
+		if state.stun_remaining_sec > 0.0:
+			lbl_mechanic_tag.text = "眩晕 %.1fs" % state.stun_remaining_sec
+		elif state.backlash_stacks > 0.0:
+			lbl_mechanic_tag.text = "反噬 %.0f/40" % state.backlash_stacks
+		elif state.boss_clones_remaining > 0:
+			lbl_mechanic_tag.text = "分身 %d/4" % state.boss_clones_remaining
+		elif strengths.has(int(MechanicDefScript.Kind.CRIT_ONLY)):
+			lbl_mechanic_tag.text = "只吃暴击"
+		elif strengths.has(int(MechanicDefScript.Kind.GOLD_EAT)):
+			lbl_mechanic_tag.text = "吞金活跃"
+		else:
+			lbl_mechanic_tag.text = ""
 
 	# 2. 怪物血条与主怪卡/排队卡布局切换 (03 §02.1)
 	var hp_ratio: float = 0.0
@@ -1210,15 +1380,37 @@ func close_inventory_panel() -> void:
 	if inventory_panel != null:
 		inventory_panel.close_drawer()
 
+func _on_wall_hint_banner_gui_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton:
+		var mb: InputEventMouseButton = event as InputEventMouseButton
+		if mb.button_index == MOUSE_BUTTON_LEFT and mb.pressed:
+			open_inventory_panel()
+
+func _sync_mute_ui(muted: bool) -> void:
+	if btn_mute != null:
+		btn_mute.text = "静" if muted else "音"
+		btn_mute.add_theme_color_override(
+			"font_color",
+			ThemePaletteScript.color_ash_gray() if muted else ThemePaletteScript.color_bone_shadow()
+		)
+	if sfx_mixer != null and sfx_mixer.is_muted() != muted:
+		sfx_mixer.set_muted(muted)
+
+func _on_tray_mute_toggled(muted: bool) -> void:
+	_sync_mute_ui(muted)
+
+func _on_game_mute_toggled(muted: bool) -> void:
+	_sync_mute_ui(muted)
+
 func _on_btn_mute_pressed() -> void:
 	if sfx_mixer == null:
 		return
 	var muted: bool = sfx_mixer.toggle_muted()
-	btn_mute.text = "静" if muted else "音"
-	btn_mute.add_theme_color_override(
-		"font_color",
-		ThemePaletteScript.color_ash_gray() if muted else ThemePaletteScript.color_bone_shadow()
-	)
+	_sync_mute_ui(muted)
+	if game_ref != null:
+		game_ref.set_audio_muted(muted)
+	if desktop_window != null and desktop_window.system_tray != null:
+		desktop_window.system_tray.set_audio_muted(muted)
 
 const ATTENTION_DRY_SEED: int = 987654321
 var _attention_uid_cache: Dictionary = {}

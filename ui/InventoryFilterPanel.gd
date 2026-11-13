@@ -125,6 +125,17 @@ func get_selected_uid() -> int:
 func get_cell_count() -> int:
 	return _cells.size()
 
+func get_cell_button(idx: int) -> Button:
+	if idx >= 0 and idx < _cells.size():
+		return _cells[idx]
+	return null
+
+func is_cell_counter_highlighted(idx: int) -> bool:
+	if idx >= 0 and idx < _cells.size():
+		var badge: Label = _cells[idx].get_node_or_null("BreakBadge") as Label
+		return badge != null and badge.visible
+	return false
+
 func get_stat_text(key: String) -> String:
 	var lbl: Label = _stat_value_labels.get(key, null) as Label
 	return lbl.text if lbl != null else ""
@@ -229,6 +240,18 @@ func _build_bag_view(root: VBoxContainer) -> void:
 		icon.material = ArtRegistryScript.make_palette_material(Color.WHITE, false, 1.0)
 		icon.visible = false
 		cell.add_child(icon)
+
+		var badge: Label = Label.new()
+		badge.name = "BreakBadge"
+		badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		badge.position = Vector2(1.0, 1.0)
+		badge.size = Vector2(30.0, 12.0)
+		badge.text = "[破壁]"
+		badge.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+		badge.add_theme_font_size_override("font_size", 8)
+		badge.add_theme_color_override("font_color", ThemePaletteScript.color_old_gold_bright())
+		badge.visible = false
+		cell.add_child(badge)
 
 		var lv: Label = Label.new()
 		lv.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -417,14 +440,25 @@ func refresh_view() -> void:
 func _refresh_bag(state: SimStateScript) -> void:
 	var count: int = state.inventory.get_count()
 	_lbl_bag_count.text = "背包 %d/%d" % [count, state.balance.inventory_max_slots]
+	var wall_hint: Dictionary = state.get_wall_hint()
+	var wall_active: bool = bool(wall_hint.get("active", false))
+	var counter_tags: Array[String] = []
+	if wall_active:
+		var raw_tags: Array = wall_hint.get("counter_tags", []) as Array
+		for rt: Variant in raw_tags:
+			counter_tags.push_back(String(rt))
+
 	var selected_alive: bool = false
 	for i: int in range(BAG_SLOTS):
 		var cell: Button = _cells[i]
 		var icon: TextureRect = _cell_icons[i]
 		var lv: Label = _cell_ilvl[i]
+		var badge: Label = cell.get_node_or_null("BreakBadge") as Label
 		var item: ItemInstanceScript = state.inventory.get_item_at(i) if i < count else null
 		if item == null:
 			icon.visible = false
+			if badge != null:
+				badge.visible = false
 			lv.text = ""
 			cell.tooltip_text = ""
 			var empty_sb: StyleBoxFlat = ThemePaletteScript.make_card_style(ThemePaletteScript.color_iron_gray(), 3, 1)
@@ -435,22 +469,29 @@ func _refresh_bag(state: SimStateScript) -> void:
 		var rar: int = int(item.rarity)
 		var rc: Color = ThemePaletteScript.get_rarity_color(rar)
 		var is_sel: bool = (item.uid == _selected_uid)
+		var is_counter: bool = wall_active and item.counters(counter_tags)
+		if badge != null:
+			badge.visible = is_counter
 		if is_sel:
 			selected_alive = true
-		var bw: int = 2 if (rar >= 3 or is_sel) else 1
-		var border: Color = ThemePaletteScript.color_old_gold_bright() if is_sel else rc
+		var bw: int = 2 if (rar >= 3 or is_sel or is_counter) else 1
+		var border: Color = rc
+		if is_sel:
+			border = ThemePaletteScript.color_old_gold_bright()
+		elif is_counter:
+			border = ThemePaletteScript.color_old_gold_bright()
 		cell.add_theme_stylebox_override("normal", ThemePaletteScript.make_card_style(border, 3, bw))
 		cell.add_theme_stylebox_override("hover", ThemePaletteScript.make_card_style(rc.lerp(ThemePaletteScript.color_old_gold_bright(), 0.5), 3, 2))
 		cell.add_theme_stylebox_override("pressed", ThemePaletteScript.make_card_style(ThemePaletteScript.color_old_gold_bright(), 3, 2))
 		var slot_key: String = ItemInstanceScript.get_slot_key(item.slot)
-		icon.texture = ArtRegistryScript.get_item_icon_texture(slot_key)
+		icon.texture = ArtRegistryScript.get_item_icon_texture(slot_key, rar >= 3)
 		icon.visible = (icon.texture != null)
 		var mat: ShaderMaterial = icon.material as ShaderMaterial
 		if mat != null:
 			mat.set_shader_parameter("color_family", rc)
 			mat.set_shader_parameter("enable_outline", rar >= 3)
 		lv.text = "Lv.%d" % item.ilvl
-		cell.tooltip_text = "%s Lv.%d" % [item.name, item.ilvl]
+		cell.tooltip_text = "%s Lv.%d%s" % [item.name, item.ilvl, " [克制破壁]" if is_counter else ""]
 	if not selected_alive:
 		_selected_uid = -1
 	_refresh_detail(state)

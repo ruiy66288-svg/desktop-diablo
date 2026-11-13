@@ -262,6 +262,13 @@ func _draw() -> void:
 
 	# 1. #16161C 实体卡底与 1px 塔罗外框
 	draw_rect(rect, card_bg, true)
+
+	# 1b. 木刻排线平铺底纹 (04 §3 #6: 叠加 tex_woodcut_hatch_256, 不透明度 0.08-0.12)
+	var hatch_tex: Texture2D = ArtRegistryScript.get_woodcut_hatch_texture()
+	if hatch_tex != null:
+		var hatch_tint: Color = Color(1.0, 1.0, 1.0, 0.09)
+		draw_texture_rect(hatch_tex, rect, true, hatch_tint)
+
 	draw_rect(Rect2(Vector2(0.5, 0.5), rect.size - Vector2(1.0, 1.0)), frame_col, false, 1.0)
 
 	# 2. 内衬几何边饰框与 Boss 哥特拱门 + 符印底环（纯几何刀痕，零伪文字）

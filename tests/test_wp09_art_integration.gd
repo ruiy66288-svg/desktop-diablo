@@ -30,8 +30,8 @@ static func _test_formal_assets_and_shader_load() -> bool:
 		return false
 
 	var paths: Array[String] = ArtRegistryScript.get_all_formal_subject_paths()
-	if paths.size() != 10:
-		push_error("[test_wp09] Expected 10 formal subject asset paths, got %d" % paths.size())
+	if paths.size() < 10:
+		push_error("[test_wp09] Expected at least 10 formal subject asset paths, got %d" % paths.size())
 		return false
 
 	for p: String in paths:

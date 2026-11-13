@@ -12,6 +12,8 @@ const ThemePaletteScript = preload("res://ui/ThemePalette.gd")
 const NumScript = preload("res://core/num/Num.gd")
 const TollScript = preload("res://simulation/economy/Toll.gd")
 const TechNodeDefScript = preload("res://simulation/tech/TechNodeDef.gd")
+const ArtRegistryScript = preload("res://ui/ArtRegistry.gd")
+const ItemInstanceScript = preload("res://simulation/loot/ItemInstance.gd")
 
 enum TabKind {
 	CREDIT = 0,
@@ -43,6 +45,7 @@ var _btn_repay: Button = null
 # Tech tab widgets
 var _tech_view: VBoxContainer = null
 var _lbl_tech_queue: Label = null
+var _lbl_auto_status: Label = null
 var _tech_nodes_list: VBoxContainer = null
 var _tech_node_rows: Dictionary = {}
 
@@ -57,6 +60,13 @@ var _prestige_view: VBoxContainer = null
 var _lbl_prestige_preview: Label = null
 var _lbl_offline_summary: Label = null
 var _btn_prestige: Button = null
+var _btn_abyss_prestige: Button = null
+var _lbl_abyss_preview: Label = null
+var _extract_picker_box: VBoxContainer = null
+var _vault_container: VBoxContainer = null
+var _vault_slots_box: HBoxContainer = null
+var _unlocked_powers_box: VBoxContainer = null
+var _selected_extract_power: String = ""
 
 func _init() -> void:
 	name = "SystemsDrawer"
@@ -161,11 +171,26 @@ func _build_credit_tab() -> void:
 	_credit_view.add_theme_constant_override("separation", 6)
 	_content_box.add_child(_credit_view)
 
+	var top_box: HBoxContainer = HBoxContainer.new()
+	top_box.add_theme_constant_override("separation", 8)
+	_credit_view.add_child(top_box)
+
+	var ledger_tex: Texture2D = ArtRegistryScript.get_wealth_ledger_texture()
+	if ledger_tex != null:
+		var ledger_rect: TextureRect = TextureRect.new()
+		ledger_rect.custom_minimum_size = Vector2(36.0, 36.0)
+		ledger_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		ledger_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		ledger_rect.texture = ledger_tex
+		ledger_rect.material = ArtRegistryScript.make_palette_material(ThemePaletteScript.color_old_gold_bright(), false, 1.0)
+		top_box.add_child(ledger_rect)
+
 	_lbl_credit_status = Label.new()
 	_lbl_credit_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_lbl_credit_status.add_theme_font_size_override("font_size", 11)
+	_lbl_credit_status.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_lbl_credit_status.add_theme_font_size_override("font_size", 10)
 	_lbl_credit_status.add_theme_color_override("font_color", ThemePaletteScript.color_bone_white())
-	_credit_view.add_child(_lbl_credit_status)
+	top_box.add_child(_lbl_credit_status)
 
 	var util_row: HBoxContainer = HBoxContainer.new()
 	util_row.add_theme_constant_override("separation", 6)
@@ -230,6 +255,12 @@ func _build_tech_tab() -> void:
 	_lbl_tech_queue.add_theme_color_override("font_color", ThemePaletteScript.color_old_gold_bright())
 	_tech_view.add_child(_lbl_tech_queue)
 
+	_lbl_auto_status = Label.new()
+	_lbl_auto_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_lbl_auto_status.add_theme_font_size_override("font_size", 10)
+	_lbl_auto_status.add_theme_color_override("font_color", ThemePaletteScript.color_bone_white())
+	_tech_view.add_child(_lbl_auto_status)
+
 	var scroll: ScrollContainer = ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -268,29 +299,79 @@ func _build_toll_tab() -> void:
 func _build_prestige_tab() -> void:
 	_prestige_view = VBoxContainer.new()
 	_prestige_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_prestige_view.add_theme_constant_override("separation", 8)
+	_prestige_view.add_theme_constant_override("separation", 6)
 	_content_box.add_child(_prestige_view)
+
+	var scroll: ScrollContainer = ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_prestige_view.add_child(scroll)
+
+	var vbox: VBoxContainer = VBoxContainer.new()
+	vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	vbox.add_theme_constant_override("separation", 6)
+	scroll.add_child(vbox)
 
 	_lbl_prestige_preview = Label.new()
 	_lbl_prestige_preview.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_lbl_prestige_preview.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_lbl_prestige_preview.add_theme_font_size_override("font_size", 11)
+	_lbl_prestige_preview.add_theme_font_size_override("font_size", 10)
 	_lbl_prestige_preview.add_theme_color_override("font_color", ThemePaletteScript.color_bone_white())
-	_prestige_view.add_child(_lbl_prestige_preview)
-
-	_lbl_offline_summary = Label.new()
-	_lbl_offline_summary.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_lbl_offline_summary.add_theme_font_size_override("font_size", 10)
-	_lbl_offline_summary.add_theme_color_override("font_color", ThemePaletteScript.color_old_gold_bright())
-	_prestige_view.add_child(_lbl_offline_summary)
+	vbox.add_child(_lbl_prestige_preview)
 
 	_btn_prestige = Button.new()
 	_btn_prestige.name = "BtnSoulPrestige"
 	_btn_prestige.text = "灵魂转生 (保留身上 6 件装备与科技)"
-	_btn_prestige.custom_minimum_size = Vector2(0.0, 26.0)
+	_btn_prestige.custom_minimum_size = Vector2(0.0, 24.0)
 	_btn_prestige.add_theme_font_size_override("font_size", 11)
 	_btn_prestige.pressed.connect(_on_prestige_pressed)
-	_prestige_view.add_child(_btn_prestige)
+	vbox.add_child(_btn_prestige)
+
+	# 深渊轮回与卡奈魔盒
+	var sep: HSeparator = HSeparator.new()
+	vbox.add_child(sep)
+
+	_lbl_abyss_preview = Label.new()
+	_lbl_abyss_preview.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_lbl_abyss_preview.add_theme_font_size_override("font_size", 10)
+	_lbl_abyss_preview.add_theme_color_override("font_color", ThemePaletteScript.color_old_gold_bright())
+	vbox.add_child(_lbl_abyss_preview)
+
+	_btn_abyss_prestige = Button.new()
+	_btn_abyss_prestige.name = "BtnAbyssPrestige"
+	_btn_abyss_prestige.text = "深渊印记转生 (萃取选中词条)"
+	_btn_abyss_prestige.custom_minimum_size = Vector2(0.0, 24.0)
+	_btn_abyss_prestige.add_theme_font_size_override("font_size", 11)
+	_btn_abyss_prestige.pressed.connect(_on_abyss_prestige_pressed)
+	vbox.add_child(_btn_abyss_prestige)
+
+	_extract_picker_box = VBoxContainer.new()
+	_extract_picker_box.add_theme_constant_override("separation", 2)
+	vbox.add_child(_extract_picker_box)
+
+	# 魔盒威能台容器
+	_vault_container = VBoxContainer.new()
+	_vault_container.add_theme_constant_override("separation", 4)
+	vbox.add_child(_vault_container)
+
+	var v_title: Label = Label.new()
+	v_title.text = "卡奈魔盒威能台 (点击卸下 / 点击装配)"
+	v_title.add_theme_font_size_override("font_size", 10)
+	v_title.add_theme_color_override("font_color", ThemePaletteScript.color_old_gold())
+	_vault_container.add_child(v_title)
+
+	_vault_slots_box = HBoxContainer.new()
+	_vault_slots_box.add_theme_constant_override("separation", 4)
+	_vault_container.add_child(_vault_slots_box)
+
+	_unlocked_powers_box = VBoxContainer.new()
+	_unlocked_powers_box.add_theme_constant_override("separation", 2)
+	_vault_container.add_child(_unlocked_powers_box)
+
+	_lbl_offline_summary = Label.new()
+	_lbl_offline_summary.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_lbl_offline_summary.add_theme_font_size_override("font_size", 9)
+	_lbl_offline_summary.add_theme_color_override("font_color", ThemePaletteScript.color_bone_shadow())
+	vbox.add_child(_lbl_offline_summary)
 
 func get_prestige_preview_snapshot() -> Dictionary:
 	if _game_ref == null:
@@ -348,16 +429,24 @@ func refresh_view() -> void:
 func _refresh_credit_tab(state: SimStateScript) -> void:
 	var stage: int = state.get_active_stage()
 	var limit_log: float = state.credit.get_credit_limit_log(stage, state.balance)
-	_lbl_credit_status.text = "信用等级: Tier %d  |  最大额度: %s\n当前负债: %s  |  状态: %s" % [
+	var max_loans: int = state.credit.get_max_concurrent_loans(state.balance)
+	var active_count: int = state.credit.loan_count
+	var discount: float = state.tech.get_effect_total("credit_repay_discount")
+	var discount_str: String = (" (还款折扣 -%.0f%%)" % (discount * 100.0)) if discount > 0.0 else ""
+
+	_lbl_credit_status.text = "信用等级: Tier %d%s | 最大额度: %s\n当前负债: %s | 贷款并发: %d / %d 笔\n状态: %s" % [
 		state.credit.credit_tier,
+		discount_str,
 		NumScript.format_num(limit_log),
 		NumScript.format_num(state.debt_total),
+		active_count,
+		max_loans,
 		"还债中 (每笔收入扣 40%)" if state.credit.active_loan else "无活跃贷款"
 	]
 
 	var preview: Dictionary = get_credit_preview_snapshot()
-	if state.credit.active_loan:
-		_lbl_credit_preview.text = "已有活跃贷款尚未还清，还清后信用等级 +1（额度 ×1.5）。"
+	if active_count >= max_loans:
+		_lbl_credit_preview.text = "已达并发贷款上限 (%d 笔)，还清后可继续借款或信用升阶。" % max_loans
 		_btn_borrow.disabled = true
 	elif bool(preview.get("valid", false)):
 		var borrow_log: float = NumScript.mul(limit_log, NumScript.from_float(_selected_util))
@@ -383,6 +472,17 @@ func _refresh_tech_tab(state: SimStateScript) -> void:
 	var head_rem: float = state.research_queue.get_head_remaining_seconds(now_unix)
 	_lbl_tech_queue.text = "研究队列: %d / 5  |  当前剩余: %.0fs" % [q_count, maxf(0.0, head_rem)]
 
+	var auto_up_active: bool = state.has_tech_effect("auto_buy_atk")
+	var auto_repay_active: bool = state.has_tech_effect("auto_repay")
+	var saving_toll: bool = state.is_saving_for_toll()
+	var auto_up_str: String = "未解锁"
+	if auto_up_active:
+		auto_up_str = "暂缓(门票储蓄中)" if saving_toll else "运行中 (Lv.%d)" % state.upgrades.atk_level
+	var auto_repay_str: String = "未解锁"
+	if auto_repay_active:
+		auto_repay_str = "还债中" if state.debt_total != NumScript.ZERO else "运行中(无债务)"
+	_lbl_auto_status.text = "自动化状态: 自动升级[%s] | 自动还款[%s]" % [auto_up_str, auto_repay_str]
+
 	var defs: Array = state.tech.get_all_defs()
 	if _tech_node_rows.is_empty():
 		for raw_def: Variant in defs:
@@ -398,8 +498,8 @@ func _refresh_tech_tab(state: SimStateScript) -> void:
 			row.add_child(info_lbl)
 
 			var act_btn: Button = Button.new()
-			act_btn.custom_minimum_size = Vector2(64.0, 22.0)
-			act_btn.add_theme_font_size_override("font_size", 10)
+			act_btn.custom_minimum_size = Vector2(72.0, 22.0)
+			act_btn.add_theme_font_size_override("font_size", 9)
 			act_btn.pressed.connect(_on_research_node_pressed.bind(ndef.id))
 			row.add_child(act_btn)
 
@@ -417,9 +517,22 @@ func _refresh_tech_tab(state: SimStateScript) -> void:
 		var researched: bool = state.tech.has_researched(ndef.id)
 		var queued: bool = _is_node_queued(state.research_queue.entries, ndef.id)
 		var prereq_ok: bool = ndef.prereq_id.is_empty() or state.tech.has_researched(ndef.prereq_id)
+		var marks_ok: bool = state.marks >= ndef.requires_marks
 		var can_afford: bool = state.gold >= ndef.cost_gold_log
 
-		info_lbl.text = "%s (T%d)\n%s" % [ndef.display_name, ndef.tier, ndef.desc]
+		var branch_cn: String = "通用"
+		match ndef.branch:
+			"combat":
+				branch_cn = "战斗"
+			"economy":
+				branch_cn = "经济"
+			"credit":
+				branch_cn = "信贷"
+			"automation":
+				branch_cn = "自动"
+		var mark_req_str: String = (" · 需印记×%d" % ndef.requires_marks) if ndef.requires_marks > 0 else ""
+		info_lbl.text = "【%s】%s (T%d%s)\n%s" % [branch_cn, ndef.display_name, ndef.tier, mark_req_str, ndef.desc]
+
 		if researched:
 			info_lbl.add_theme_color_override("font_color", ThemePaletteScript.color_old_gold_bright())
 			act_btn.text = "已研究"
@@ -431,6 +544,10 @@ func _refresh_tech_tab(state: SimStateScript) -> void:
 		elif not prereq_ok:
 			info_lbl.add_theme_color_override("font_color", ThemePaletteScript.color_ash_gray())
 			act_btn.text = "需前置"
+			act_btn.disabled = true
+		elif not marks_ok:
+			info_lbl.add_theme_color_override("font_color", ThemePaletteScript.color_ash_gray())
+			act_btn.text = "需印记%d" % ndef.requires_marks
 			act_btn.disabled = true
 		else:
 			info_lbl.add_theme_color_override("font_color", ThemePaletteScript.color_bone_white())
@@ -492,9 +609,8 @@ func _refresh_prestige_tab(state: SimStateScript) -> void:
 	var debt_total: float = float(pv.get("legacy_debt_total_minutes", 0.0))
 	var kept_eq: int = int(pv.get("kept_equipped_count", 0))
 
-	_lbl_prestige_preview.text = "本轮最高: 第 %d 层  |  历史最高: 第 %d 层\n预估灵魂: +%s (转生后总计 %s)\n宿债折算: +%.1f 分 (累计 %.1f 分)\n保留装备: %d / 6 件  |  科技: 全部保留" % [
+	_lbl_prestige_preview.text = "【灵魂转生】本轮: 第 %d 层 | 灵魂: +%s (后 %s)\n宿债: +%.1f 分 (累计 %.1f 分) | 保留装备: %d/6 件" % [
 		state.run_best,
-		state.all_time_best,
 		NumScript.format_num(pending_log),
 		NumScript.format_num(after_log),
 		debt_add,
@@ -503,6 +619,99 @@ func _refresh_prestige_tab(state: SimStateScript) -> void:
 	]
 	_btn_prestige.disabled = not can_prestige
 
+	# 深渊转生状态
+	var apv: Dictionary = state.get_abyss_prestige_preview()
+	var can_abyss: bool = bool(apv.get("can_prestige", false))
+	var p_marks: int = int(apv.get("pending_marks", 0))
+	var marks_after: int = int(apv.get("marks_after", state.marks))
+	var max_slots_after: int = int(apv.get("max_vault_slots_after", state.get_max_vault_slots()))
+	var extractable: Array = apv.get("extractable_affix_ids", []) as Array
+
+	_lbl_abyss_preview.text = "【深渊印记】当前印记: %d | 预计可得: +%d (后 %d)\n永久威能槽位: %d / %d (转生后 %d 槽)\n可萃取词条: %d 个" % [
+		state.marks,
+		p_marks,
+		marks_after,
+		state.vault_powers.size(),
+		state.get_max_vault_slots(),
+		max_slots_after,
+		extractable.size()
+	]
+	_btn_abyss_prestige.disabled = not can_abyss
+	if not _selected_extract_power.is_empty():
+		_btn_abyss_prestige.text = "深渊印记转生 (萃取: %s)" % _selected_extract_power
+	else:
+		_btn_abyss_prestige.text = "深渊印记转生 (萃取选中词条)"
+
+	# 刷新可萃取词条选择栏
+	if _extract_picker_box != null:
+		for ch_ex: Node in _extract_picker_box.get_children():
+			ch_ex.queue_free()
+		if extractable.is_empty():
+			var no_ex_lbl: Label = Label.new()
+			no_ex_lbl.text = "当前背包/穿戴暂无新暗金词条可萃取"
+			no_ex_lbl.add_theme_font_size_override("font_size", 9)
+			no_ex_lbl.add_theme_color_override("font_color", ThemePaletteScript.color_ash_gray())
+			_extract_picker_box.add_child(no_ex_lbl)
+		else:
+			if _selected_extract_power.is_empty() or not extractable.has(_selected_extract_power):
+				_selected_extract_power = str(extractable[0])
+			var pick_row: HBoxContainer = HBoxContainer.new()
+			pick_row.add_theme_constant_override("separation", 4)
+			_extract_picker_box.add_child(pick_row)
+			for ex_id_var: Variant in extractable:
+				var ex_id: String = str(ex_id_var)
+				var ex_btn: Button = Button.new()
+				ex_btn.text = ("[✓] " if ex_id == _selected_extract_power else "") + "萃取 " + ex_id
+				ex_btn.custom_minimum_size = Vector2(0.0, 20.0)
+				ex_btn.add_theme_font_size_override("font_size", 9)
+				var is_chosen: bool = (ex_id == _selected_extract_power)
+				ex_btn.add_theme_color_override(
+					"font_color",
+					ThemePaletteScript.color_old_gold_bright() if is_chosen else ThemePaletteScript.color_bone_white()
+				)
+				ex_btn.pressed.connect(_on_select_extract_affix_pressed.bind(ex_id))
+				pick_row.add_child(ex_btn)
+
+	# 刷新威能槽
+	for ch: Node in _vault_slots_box.get_children():
+		ch.queue_free()
+	var cur_slots: int = state.get_max_vault_slots()
+	for s_idx: int in range(cur_slots):
+		var p_btn: Button = Button.new()
+		p_btn.custom_minimum_size = Vector2(70.0, 22.0)
+		p_btn.add_theme_font_size_override("font_size", 9)
+		if s_idx < state.vault_powers.size():
+			var aff_id: String = state.vault_powers[s_idx]
+			p_btn.text = "槽%d: %s [卸]" % [s_idx + 1, aff_id]
+			p_btn.add_theme_color_override("font_color", ThemePaletteScript.color_old_gold_bright())
+			p_btn.pressed.connect(_on_unequip_vault_power_pressed.bind(aff_id))
+		else:
+			p_btn.text = "槽%d: [空]" % (s_idx + 1)
+			p_btn.add_theme_color_override("font_color", ThemePaletteScript.color_ash_gray())
+			p_btn.disabled = true
+		_vault_slots_box.add_child(p_btn)
+
+	# 刷新已解锁但未装配的威能列表
+	for ch2: Node in _unlocked_powers_box.get_children():
+		ch2.queue_free()
+	for un_id: String in state.unlocked_vault_powers:
+		if not state.vault_powers.has(un_id):
+			var u_row: HBoxContainer = HBoxContainer.new()
+			var u_lbl: Label = Label.new()
+			u_lbl.text = "已萃取: %s" % un_id
+			u_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			u_lbl.add_theme_font_size_override("font_size", 10)
+			u_lbl.add_theme_color_override("font_color", ThemePaletteScript.color_bone_white())
+			u_row.add_child(u_lbl)
+			var eq_btn: Button = Button.new()
+			eq_btn.text = "装配"
+			eq_btn.custom_minimum_size = Vector2(40.0, 20.0)
+			eq_btn.add_theme_font_size_override("font_size", 9)
+			eq_btn.disabled = state.vault_powers.size() >= state.get_max_vault_slots()
+			eq_btn.pressed.connect(_on_equip_vault_power_pressed.bind(un_id))
+			u_row.add_child(eq_btn)
+			_unlocked_powers_box.add_child(u_row)
+
 	var off: Dictionary = _game_ref.get_last_offline_summary()
 	if not off.is_empty() and bool(off.get("loaded", false)):
 		var eff_s: float = float(off.get("effective_seconds", 0.0))
@@ -510,6 +719,32 @@ func _refresh_prestige_tab(state: SimStateScript) -> void:
 		_lbl_offline_summary.text = "最近离线结算: %.0fs · 金币 +%s" % [eff_s, NumScript.format_num(g_log)]
 	else:
 		_lbl_offline_summary.text = "自动存档已就绪（退出/每 30 秒原子保存）"
+
+func _on_select_extract_affix_pressed(affix_id: String) -> void:
+	_selected_extract_power = affix_id
+	refresh_view()
+
+func _on_abyss_prestige_pressed() -> void:
+	if _game_ref != null:
+		var state: SimStateScript = _game_ref.get_sim_state()
+		var p_id: String = _selected_extract_power
+		if state != null and p_id.is_empty():
+			var ext: Array[String] = state.collect_extractable_affix_ids()
+			for cand: String in ext:
+				if not state.unlocked_vault_powers.has(cand):
+					p_id = cand
+					break
+			if p_id.is_empty() and not ext.is_empty():
+				p_id = ext[0]
+		_game_ref.request_abyss_prestige(p_id)
+
+func _on_equip_vault_power_pressed(affix_id: String) -> void:
+	if _game_ref != null:
+		_game_ref.request_equip_vault_power(affix_id)
+
+func _on_unequip_vault_power_pressed(affix_id: String) -> void:
+	if _game_ref != null:
+		_game_ref.request_unequip_vault_power(affix_id)
 
 func _on_prestige_pressed() -> void:
 	if _game_ref != null:

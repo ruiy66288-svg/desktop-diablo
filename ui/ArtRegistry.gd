@@ -6,13 +6,16 @@ class_name ArtRegistry extends RefCounted
 
 const SHADER_PALETTE_SUBJECT: String = "res://assets/art/shaders/palette_subject.gdshader"
 
-# 1. 怪物资产 (352×440, 四通道 RGBA)
+# 1. 怪物资产 (352×440, 四通道 RGBA) - 阶段 2 五大族群
 const MON_UNDEAD_MISER: String = "res://assets/art/monsters/mon_undead_miser_v01.png"
 const MON_DEMON_DEBTOR: String = "res://assets/art/monsters/mon_demon_debtor_v01.png"
 const MON_BEAST_GOLDMAW: String = "res://assets/art/monsters/mon_beast_goldmaw_v01.png"
+const MON_IDOL_SCALES: String = "res://assets/art/monsters/mon_idol_scales_v01.png"
+const MON_CULT_PAWNBROKER: String = "res://assets/art/monsters/mon_cult_pawnbroker_v01.png"
 
 # 2. Boss 资产 (416×520, 四通道 RGBA)
 const BOSS_ABYSS_LORD: String = "res://assets/art/bosses/boss_demon_abyss-lord_v01.png"
+const BOSS_RARE_ARCHON: String = "res://assets/art/bosses/boss_rare_archon_v01.png"
 
 # 3. 六槽装备底材资产 (96×96, 四通道 RGBA)
 const ITEM_WEAPON: String = "res://assets/art/items/eq_weapon_base_greatsword_v01.png"
@@ -22,6 +25,15 @@ const ITEM_GLOVES: String = "res://assets/art/items/eq_gloves_base_gauntlets_v01
 const ITEM_BOOTS: String = "res://assets/art/items/eq_boots_base_greaves_v01.png"
 const ITEM_TRINKET: String = "res://assets/art/items/eq_trinket_base_signet_v01.png"
 
+# 3b. 专属暗金、召唤符文与道具插图 (96×96, 四通道 RGBA)
+const UNIQ_WEAPON_THUNDER: String = "res://assets/art/items/uniq_weapon_thunder_blade_v01.png"
+const UNIQ_TRINKET_SCALES: String = "res://assets/art/items/uniq_trinket_usurer_scales_v01.png"
+const COL_RUNE_SUMMON: String = "res://assets/art/items/col_rune_abyss_summon_v01.png"
+const PROP_WEALTH_LEDGER: String = "res://assets/art/items/prop_wealth_ledger_v01.png"
+
+# 3c. 木刻排线平铺底纹 (256×256, 单通道二值无缝)
+const TEX_WOODCUT_HATCH: String = "res://assets/art/textures/tex_woodcut_hatch_256_v01.png"
+
 # 4. PixelFX 归一化木刻爆炸序列 (512×512, 4×4=16 帧, 128×128/帧)
 const VFX_EXPLOSION_SMALL: String = "res://assets/art/vfx/vfx_explosion_small_16f_128x128.png"
 
@@ -29,7 +41,10 @@ const VFX_EXPLOSION_SMALL: String = "res://assets/art/vfx/vfx_explosion_small_16
 const HEX_ACCENT_UNDEAD: String = "#B08D57" # 不死族：旧金
 const HEX_ACCENT_DEMON: String = "#7A0F14"  # 恶魔族：血墨
 const HEX_ACCENT_BEAST: String = "#4E7A3A"  # 异兽族：苔绿
+const HEX_ACCENT_IDOL: String = "#B08D57"   # 堕圣族：镀金圣像旧金
+const HEX_ACCENT_CULT: String = "#6A1B3A"   # 深渊族：典当教团酒红
 const HEX_ACCENT_SHIELD: String = "#A8C8E8" # 护盾机制区间变体
+const HEX_ACCENT_ARCHON: String = "#C9A04E" # 契约大执政官：高阶鎏金
 
 static var _tex_cache: Dictionary = {}
 static var _shader_cache: Shader = null
@@ -39,14 +54,42 @@ static func get_all_formal_subject_paths() -> Array[String]:
 		MON_UNDEAD_MISER,
 		MON_DEMON_DEBTOR,
 		MON_BEAST_GOLDMAW,
+		MON_IDOL_SCALES,
+		MON_CULT_PAWNBROKER,
 		BOSS_ABYSS_LORD,
+		BOSS_RARE_ARCHON,
 		ITEM_WEAPON,
 		ITEM_HELM,
 		ITEM_CHEST,
 		ITEM_GLOVES,
 		ITEM_BOOTS,
-		ITEM_TRINKET
+		ITEM_TRINKET,
+		UNIQ_WEAPON_THUNDER,
+		UNIQ_TRINKET_SCALES,
+		COL_RUNE_SUMMON,
+		PROP_WEALTH_LEDGER
 	]
+
+static func get_woodcut_hatch_texture() -> Texture2D:
+	return load_texture_safe(TEX_WOODCUT_HATCH)
+
+static func get_rare_boss_path() -> String:
+	return BOSS_RARE_ARCHON
+
+static func get_summon_rune_texture() -> Texture2D:
+	return load_texture_safe(COL_RUNE_SUMMON)
+
+static func get_wealth_ledger_texture() -> Texture2D:
+	return load_texture_safe(PROP_WEALTH_LEDGER)
+
+static func get_unique_item_icon_path(slot_key: String) -> String:
+	match slot_key:
+		"weapon":
+			return UNIQ_WEAPON_THUNDER
+		"trinket":
+			return UNIQ_TRINKET_SCALES
+		_:
+			return get_item_slot_path(slot_key)
 
 static func get_item_slot_path(slot_key: String) -> String:
 	match slot_key:
@@ -133,16 +176,31 @@ static func load_texture_safe(res_path: String) -> Texture2D:
 				return img_tex
 	return null
 
-static func get_item_icon_texture(slot_key: String) -> Texture2D:
+static func get_item_icon_texture(slot_key: String, is_unique_or_primal: bool = false) -> Texture2D:
+	if is_unique_or_primal:
+		var u_path: String = get_unique_item_icon_path(slot_key)
+		var u_tex: Texture2D = load_texture_safe(u_path)
+		if u_tex != null:
+			return u_tex
 	return load_texture_safe(get_item_slot_path(slot_key))
 
-## 根据层数、同层杀怪序号与 Boss/护盾状态返回怪物表现配置（3 族群轮换 + 精英变体 + 深渊魔主）
+## 根据层数、同层杀怪序号与 Boss/护盾状态返回怪物表现配置（阶段2 五大族群轮换 + 精英变体 + 深渊魔主/稀有大执政官）
 static func get_monster_visual_spec(
 	stage: int,
 	mob_seq: int,
 	is_boss: bool,
-	has_shield: bool = false
+	has_shield: bool = false,
+	is_rare_boss: bool = false
 ) -> Dictionary:
+	if is_rare_boss:
+		return {
+			"id": "boss_rare_archon",
+			"title": "契约大执政官",
+			"res_path": BOSS_RARE_ARCHON,
+			"accent": Color.html(HEX_ACCENT_ARCHON),
+			"is_elite": false
+		}
+
 	if is_boss:
 		var boss_accent: Color = Color.html(HEX_ACCENT_SHIELD) if has_shield else Color.html(HEX_ACCENT_DEMON)
 		var boss_title: String = "护盾魔主" if has_shield else "深渊魔主"
@@ -154,7 +212,7 @@ static func get_monster_visual_spec(
 			"is_elite": false
 		}
 
-	var idx: int = posmod(stage * 2 + mob_seq, 3)
+	var idx: int = posmod(stage * 2 + mob_seq, 5)
 	var is_elite: bool = (mob_seq > 0 and posmod(mob_seq, 4) == 3)
 	var res_path: String = MON_UNDEAD_MISER
 	var base_title: String = "守财亡骸"
@@ -168,6 +226,14 @@ static func get_monster_visual_spec(
 		res_path = MON_BEAST_GOLDMAW
 		base_title = "吞金腐兽"
 		accent = Color.html(HEX_ACCENT_BEAST)
+	elif idx == 3:
+		res_path = MON_IDOL_SCALES
+		base_title = "镀金圣像"
+		accent = Color.html(HEX_ACCENT_IDOL)
+	elif idx == 4:
+		res_path = MON_CULT_PAWNBROKER
+		base_title = "典当教徒"
+		accent = Color.html(HEX_ACCENT_CULT)
 
 	if has_shield:
 		accent = accent.lerp(Color.html(HEX_ACCENT_SHIELD), 0.55)
