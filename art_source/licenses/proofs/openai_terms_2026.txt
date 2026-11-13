@@ -1,0 +1,39 @@
+================================================================================
+OpenAI Output Ownership & Commercial Rights Verification Snapshot [V-03]
+Archived Date : 2026-11-13
+License ID    : LIC-OPENAI-01
+Source URLs   :
+  1. https://openai.com/policies/terms-of-use/
+  2. https://openai.com/policies/business-terms/ (OpenAI API / Business Services)
+  3. https://openai.com/policies/usage-policies/
+Scope         : GPT Image API (api.openai.com/v1/images -> gpt-image-2.6-flare / sunburst)
+================================================================================
+
+1. OpenAI Terms of Use — Section "Content" -> "Ownership of content" (Verbatim):
+--------------------------------------------------------------------------------
+"Your Content. You may provide input to the Services ("Input"), and receive
+output from the Services based on the Input ("Output"). Input and Output are
+collectively "Content." You are responsible for Content, including ensuring
+that it does not violate any applicable law or these Terms. You represent and
+warrant that you have all rights, licenses, and permissions needed to provide
+Input to our Services.
+
+Ownership of content. As between you and OpenAI, and to the extent permitted
+by applicable law, you (a) retain your ownership rights in Input and (b) own
+the Output. We hereby assign to you all our right, title, and interest, if any,
+in and to Output."
+
+2. OpenAI Business Terms (API Services) — Section 3 "Content" -> "3.1 Customer Content":
+--------------------------------------------------------------------------------
+"As between the parties and to the extent permitted by applicable law, Customer
+owns all Input, and subject to Customer's compliance with this Agreement,
+OpenAI assigns to Customer all its right, title, and interest in and to Output."
+
+3. Commercial Distribution & Attribution Compliance Summary for Project:
+--------------------------------------------------------------------------------
+- Commercial Use Allowed      : YES (Full assignment of OpenAI's right, title, and interest in Output; permitted for Steam / commercial game distribution).
+- Attribution Required        : NO (attribution_required = N in LICENSES.csv).
+- Raw Redistribution Policy   : Raw 1024x1024 / 1024x1536 PNGs are stored only in `art_source/raw/` (Git LFS) for provenance; runtime build ships processed 4-channel RGBA data textures (`assets/art/`) via `process_subject.py` + `export.py`.
+- Usage Policies Safeguards   : Project prompts (`tools/art/gen_openai.py` + `art_source/prompts/*.yaml`) strictly prohibit living artists' names, copyrighted third-party IP characters/logos, trademarked symbols, or deceptive watermarking.
+- Steam Store AI Disclosure   : Because first-party woodcut subject masters are generated via OpenAI GPT Image API and post-processed into 4-channel data textures, Steamworks Pre-Generated AI Content disclosure should truthfully state that base 2D woodcut silhouettes were assisted by OpenAI Image API under commercial ownership assignment and post-processed via custom channel-packing tools.
+================================================================================

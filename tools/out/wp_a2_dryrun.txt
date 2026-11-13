@@ -1,104 +1,260 @@
-﻿================================================================================
-[DRY-RUN] gen_openai.py@1.1.0 | 触发原因: OPENAI_API_KEY unset, ART_BUDGET_USD unset
+================================================================================
+[DRY-RUN] gen_openai.py@1.2.0 | 触发原因: OPENAI_API_KEY unset, ART_BUDGET_USD unset
 ================================================================================
   Prompt Card       : art_source/prompts/anchor_01_monster_undead_miser.yaml
   Asset ID          : anchor_01_monster_undead_miser (category=monster)
   Mode / Tier       : anchor
   Model             : gpt-image-2.6-flare
   Size & Quality    : 1024x1536 | quality=high | n=1
-  Cache SHA-256     : d42315418c1e1e34b544a3b2b2002821d8e8e6e40f5c0f1b3f0e9287cabacea3
-  Local Cache Hit   : NO (new request)
-  Est. Tokens [V-02]: in_text~595, in_img~0, out_img~1353
-  Est. Cost (USD)   : $0.043565 / image | Total batch (n=1): $0.043565
-  Ledger Spent SoFar: $0.068615 USD
-  Planned Output    : art_source/raw/anchor_01_monster_undead_miser/gen_d42315418c1e1e34.png
+  Cache SHA-256     : ebb5245e5ae37f4a7c89ab133528c255bb8d0f1e9604598b10a3ded5257f76a3
+  Local Cache Hit   : YES ($0.00 skip)
+  Est. Tokens [V-02]: in_text~691, in_img~0, out_img~1353
+  Est. Cost (USD)   : $0.044045 / image | Total batch (n=1): $0.044045
+  Ledger Spent SoFar: $0.881510 USD
+  Planned Output    : art_source/raw/anchor_01_monster_undead_miser/gen_ebb5245e5ae37f4a.png
 --------------------------------------------------------------------------------
   FULL PAYLOAD PROMPT:
     STYLE (fixed prefix, never edit):
     A coarse relief woodcut print in strict two-tone: deep ink black and warm bone white, with limited gold-leaf gilding and one tiny muted accent. Thick confident gouge strokes, large solid black shadow shapes, coarse parallel hatching only in mid-tones, no gradients, no soft shading, no glow, no metallic reflections, no photorealism, no 3D render look. Light from the upper left. The background is a completely flat, uniform medium gray with nothing else. No frame, border, ground, text, letters, runes or symbols.
     
     SUBJECT (monster):
-    Vertical portrait composition for a 4:5 master ratio. A single skeletal miser revenant of the Undead family, front-facing in a symmetrical iconic tarot standing pose, full body visible from crown tip to skeletal feet, centered horizontally, filling about 86% of the image height with feet resting near the 92% height line. Arms and legs are clearly separated from the ribcage and pelvis so the outer silhouette reads cleanly at small 72x90 pixel scale. One dominant silhouette feature only: a tall jagged bone crown atop the skull (no wings, no horns, no oversized cape). Wealth corruption motif: one heavy gold coin wedged tightly into the left eye socket and two bulging coin pouches bound across the ribcage with thick iron links, rendered as flat gold-leaf gilding covering no more than 8% of the body. Tiny muted old-ochre ink accent strictly limited to a small torn burial sash knot at the waist (under 5% area). Tattered cloth and bone surfaces use extra-bold, wide-spaced woodcut chisel gouges and large solid ink-black shadow blocks (40% to 50% black mass); any iron shoulder plates are shown solely by coarse parallel horizontal gouge cuts.
+    Vertical portrait composition for a 4:5 master ratio. A single sturdy skeletal miser revenant of the Undead family, front-facing in a symmetrical iconic tarot standing pose, full body completely visible from crown tip to skeletal feet with generous empty flat medium gray (#808080) margin on all four sides (never cropped at top or bottom, feet floating cleanly in mid-air with zero ground strip beneath them). Arms and legs are clearly separated from the torso with open gray negative space between limbs so the silhouette reads cleanly at small 72x90 pixel scale. One dominant silhouette feature only: a tall broad jagged bone crown atop the skull (no wings, no horns, no cape). Bright bone-white-dominant relief woodcut: about 55% to 60% of the figure's interior is wide, continuous, flat unshaded warm bone-white carved surfaces—broad bone crown, bold bone skull, wide fused bone sternum plate and thick wide ribs, broad ragged bone-white burial kilt, and chunky thick arm and leg bones—so black ink outlines and shadow recesses total only about 38% to 46% of the figure. Wealth corruption motif: one heavy gold coin wedged tightly into the left eye socket and two bulging coin pouches chained across the chest, rendered as flat gold-leaf gilding covering about 7% of the body. One tiny muted oxidized bronze-olive ink accent strictly limited to a small burial sash knot at the waist (under 3% area).
     
     HARD CONSTRAINTS:
-    Isolated subject floating on a completely flat, uniform medium gray (#808080) background—strictly NO bone-white paper card background, NO tarot card frame, NO archway, NO ground shadow. Strictly NO fine copperplate engraving lines or dense thin hatching on cloth or bone (every carved stroke must be thick and bold so it stays crisp at 72px height without turning muddy gray). Strictly NO smooth metallic shading or specular highlights. Strictly NO text, letters, numbers, runes, symbols, seals with writing, or borders.
+    Isolated full-body subject floating on a completely flat, uniform medium gray (#808080) background—strictly NO bone-white paper card background, NO tarot card frame, NO ground line, NO floor strip, NO drop shadow. Strictly NO gray-shaded metal shoulder pads (every surface must be pure warm bone-white, pure ink-black, flat gold-leaf, or the tiny sash accent—zero gray fills inside the character!). Keep warm bone-white planes wide, chunky, and dominant (~58% white vs ~40% black) with ZERO fine thin hatching so 72x90 thumbnail contrast stays razor-sharp. Strictly NO text, letters, numbers, runes, coin inscriptions, or symbols.
 ================================================================================
 
 ================================================================================
-[DRY-RUN] gen_openai.py@1.1.0 | 触发原因: OPENAI_API_KEY unset, ART_BUDGET_USD unset
+[DRY-RUN] gen_openai.py@1.2.0 | 触发原因: OPENAI_API_KEY unset, ART_BUDGET_USD unset
 ================================================================================
   Prompt Card       : art_source/prompts/anchor_02_boss_abyss_lord.yaml
   Asset ID          : anchor_02_boss_abyss_lord (category=boss)
   Mode / Tier       : anchor
   Model             : gpt-image-2.6-flare
   Size & Quality    : 1024x1536 | quality=high | n=1
-  Cache SHA-256     : b07b571786300f4502acf4f73dd8fc677c68ac617b0491cdf7c80254b85ad5f8
-  Local Cache Hit   : NO (new request)
-  Est. Tokens [V-02]: in_text~628, in_img~0, out_img~1353
-  Est. Cost (USD)   : $0.043730 / image | Total batch (n=1): $0.043730
-  Ledger Spent SoFar: $0.068615 USD
-  Planned Output    : art_source/raw/anchor_02_boss_abyss_lord/gen_b07b571786300f45.png
+  Cache SHA-256     : f4986b3ce37c18eb932032d1082a56083a2fab243df04bd0ec6251efa7814af4
+  Local Cache Hit   : YES ($0.00 skip)
+  Est. Tokens [V-02]: in_text~708, in_img~0, out_img~1353
+  Est. Cost (USD)   : $0.044130 / image | Total batch (n=1): $0.044130
+  Ledger Spent SoFar: $0.881510 USD
+  Planned Output    : art_source/raw/anchor_02_boss_abyss_lord/gen_f4986b3ce37c18eb.png
 --------------------------------------------------------------------------------
   FULL PAYLOAD PROMPT:
     STYLE (fixed prefix, never edit):
     A coarse relief woodcut print in strict two-tone: deep ink black and warm bone white, with limited gold-leaf gilding and one tiny muted accent. Thick confident gouge strokes, large solid black shadow shapes, coarse parallel hatching only in mid-tones, no gradients, no soft shading, no glow, no metallic reflections, no photorealism, no 3D render look. Light from the upper left. The background is a completely flat, uniform medium gray with nothing else. No frame, border, ground, text, letters, runes or symbols.
     
     SUBJECT (boss):
-    Vertical portrait composition for a 4:5 master ratio. Make it a towering boss seen from a slightly low upward camera angle (about 10 degrees), broad armored shoulders spanning over 72% of the frame width, full body from horn tips to clawed hooves centered horizontally and filling about 92% of the image height. Depict the Abyssal Archfiend of the Demon family in a commanding symmetrical front-facing tarot stance with limbs clearly separated from the torso. Two dominant silhouette features: massive sweeping curved ram-demon horns framing a jagged iron crown. Heavier solid ink-black shadow masses covering 52% to 58% of the figure. Wealth corruption motif: thick padlocked debt chains criss-crossing the chest plate and a heavy closed blank ledger bound by a large geometric gold padlock at the belt, rendered as flat gold-leaf gilding covering no more than 10% of the body. One small muted dark blood-crimson ink accent restricted to the inner fold of the torn waist mantle (under 8% area). Heavy breastplate, gauntlets, and mantle folds are carved exclusively with bold, wide-spaced parallel woodcut chisel gouges and stark flat bone-white lit planes from the upper left.
+    Vertical portrait composition for a 4:5 master ratio. Make it a towering boss seen from a slightly low upward camera angle (about 10 degrees), broad armored shoulders spanning about 72% of the frame width, full body completely visible from horn tips to clawed hooves with clear empty flat medium gray (#808080) margin on all four sides (never cropped at top, bottom, or sides; hooves floating cleanly in mid-air with zero ground strip beneath them). Depict the Abyssal Archfiend of the Demon family in a commanding symmetrical front-facing tarot stance with arms and legs clearly separated from the torso (no floor-length cape). Two dominant silhouette features: massive sweeping curved ram-demon horns framing a jagged iron crown. Strict 54%-black / 40%-bone-white balance: large, broad, clean flat warm bone-white lit surfaces cover the upper surfaces of both horns, the broad chestplate, massive tiered pauldrons, gauntlets, armored thigh tassets, and shin greaves (keep lit bone-white armor plates wide and mostly solid white with only 2 or 3 thick coarse horizontal chisel cuts per plate rather than dense stripes), balanced against bold solid deep ink-black shadow recesses (~54% total black ink). Wealth corruption motif: thick padlocked gold-leaf debt chains criss-crossing the chest and a closed blank geometric gold-bound ledger padlocked at the belt (~6% gold-leaf area). One small muted dark blood-crimson ink accent on the inner fold of the short waist mantle (~3% area).
     
     HARD CONSTRAINTS:
-    Isolated subject on a completely flat, uniform medium gray (#808080) background—strictly NO bone-white card paper background, NO gothic arch frame, NO background halo (arch and sigil ring are drawn procedurally in Godot). Strictly NO fine copperplate hatching on cloak, fur, or horns that would blur into gray at 72x90px. Armor and metal surfaces must have ZERO smooth gradients and ZERO metallic highlights—use only coarse parallel horizontal woodcut gouge bands. The closed debt ledger and seals must be 100% blank geometric shapes with ZERO text, letters, pseudo-runes, script, numbers, or symbols anywhere in the image.
+    Isolated full-body subject on a completely flat, uniform medium gray (#808080) background—strictly NO bone-white card paper background, NO gothic arch frame, NO ground line, NO floor strip. Keep lit bone-white armor plates wide and open so total black ink stays strictly between 50% and 58% (do NOT over-fill lit armor plates with dense black stripes, and NO gray midtone fills inside the figure). Armor and metal surfaces must have ZERO smooth gradients and ZERO metallic highlights. The closed debt ledger must be 100% blank geometric shapes with ZERO text, letters, pseudo-runes, script, numbers, or symbols anywhere.
 ================================================================================
 
 ================================================================================
-[DRY-RUN] gen_openai.py@1.1.0 | 触发原因: OPENAI_API_KEY unset, ART_BUDGET_USD unset
+[DRY-RUN] gen_openai.py@1.2.0 | 触发原因: OPENAI_API_KEY unset, ART_BUDGET_USD unset
 ================================================================================
   Prompt Card       : art_source/prompts/anchor_03_icon_weapon_sword.yaml
   Asset ID          : anchor_03_icon_weapon_sword (category=icon)
   Mode / Tier       : anchor
   Model             : gpt-image-2.6-flare
   Size & Quality    : 1024x1024 | quality=high | n=1
-  Cache SHA-256     : 67aaf97aed1afbac53abe78ee0b3856c3b35eae170dbc7074ab1f88080b8c1cd
-  Local Cache Hit   : NO (new request)
-  Est. Tokens [V-02]: in_text~545, in_img~0, out_img~1120
-  Est. Cost (USD)   : $0.036325 / image | Total batch (n=1): $0.036325
-  Ledger Spent SoFar: $0.068615 USD
-  Planned Output    : art_source/raw/anchor_03_icon_weapon_sword/gen_67aaf97aed1afbac.png
+  Cache SHA-256     : 9c1cb36cdb0d9bc841fcbd2799b494e582eb3747c6b62e41773bb4d87162dbe3
+  Local Cache Hit   : YES ($0.00 skip)
+  Est. Tokens [V-02]: in_text~561, in_img~0, out_img~1120
+  Est. Cost (USD)   : $0.036405 / image | Total batch (n=1): $0.036405
+  Ledger Spent SoFar: $0.881510 USD
+  Planned Output    : art_source/raw/anchor_03_icon_weapon_sword/gen_9c1cb36cdb0d9bc8.png
 --------------------------------------------------------------------------------
   FULL PAYLOAD PROMPT:
     STYLE (fixed prefix, never edit):
     A coarse relief woodcut print in strict two-tone: deep ink black and warm bone white, with limited gold-leaf gilding and one tiny muted accent. Thick confident gouge strokes, large solid black shadow shapes, coarse parallel hatching only in mid-tones, no gradients, no soft shading, no glow, no metallic reflections, no photorealism, no 3D render look. Light from the upper left. The background is a completely flat, uniform medium gray with nothing else. No frame, border, ground, text, letters, runes or symbols.
     
     SUBJECT (icon):
-    Square 1:1 icon composition. A single heavy medieval broadsword weapon base item, placed diagonally at a 45-degree angle from the pommel at the bottom-left to the broad blade point at the top-right, centered and covering about 85% of the diagonal (occupying roughly 82% of the square frame). Render as an extra-bold coarse relief woodcut print icon with a thick closed deep ink-black outer contour, stark flat bone-white upper-left lit blade bevel, and solid ink-black lower-right fuller and shadow bevel (35% to 45% black mass). All steel and iron surfaces of the blade, straight crossguard, and heavy wheel pommel are depicted strictly by bold, wide-spaced parallel woodcut chisel gouge bands—zero smooth tonal gradients. A tiny gold-leaf gilding motif is limited to a geometric coin-shaped rivet clasp at the center of the crossguard (under 6% area), and a single small muted crimson-ink faceted pommel stone provides the tiny accent (under 5% area).
+    Square 1:1 icon composition. A single wide-bladed medieval greatsword weapon base item, placed diagonally at a 45-degree angle from the wheel pommel at the bottom-left to the broad blade point at the top-right, centered with clear empty medium gray margin around all four corners (occupying about 82% of the square frame, never touching any edge). Bright bone-white-dominant coarse woodcut icon: about 58% to 64% of the sword's interior area is wide, open, flat unshaded warm bone-white lit steel across almost the entire broad blade face, wide straight crossguard, ribbed grip highlights, and wheel pommel face, paired with a crisp closed deep ink-black outer contour, a clean central black fuller groove, and a narrow solid ink-black shadow edge along the lower-right side (~36% to 44% total black ink; only 3 or 4 sparse bold woodcut gouge notches, NOT half-black blade shading). A small geometric gold-leaf coin-clasp sits at the center of the crossguard (~3% area), and a small muted crimson-ink faceted stone sits in the pommel (~3% area).
     
     HARD CONSTRAINTS:
-    Completely flat, uniform medium gray (#808080) background with nothing else—strictly NO square slot frame, NO border, NO bone-white paper backdrop, NO drop shadow, NO aura or sparkles. Every woodcut stroke must be extra-thick so the sword silhouette and fuller remain razor-clear when downsampled to 48x48 equipment slot and 28x28 ground loot icon sizes without turning muddy gray. Strictly NO smooth mobile-game metallic gradients, NO shiny specular highlights, and ZERO runes, engravings of letters, text, or symbols on the blade.
+    Completely flat, uniform medium gray (#808080) background with nothing else—strictly NO square slot frame, NO border, NO bone-white paper backdrop, NO drop shadow, NO glow. Keep warm bone-white clearly dominant over black (~60% bone-white vs ~40% ink-black) so the broad blade gleams brightly in bone-white at 48x48 and 28x28 sizes without turning dark or gray. Strictly NO smooth metallic gradients, NO gray fills inside the sword, NO fine hatching lines, and ZERO runes, letters, text, or symbols.
 ================================================================================
 
 ================================================================================
-[DRY-RUN] gen_openai.py@1.1.0 | 触发原因: OPENAI_API_KEY unset, ART_BUDGET_USD unset
+[DRY-RUN] gen_openai.py@1.2.0 | 触发原因: OPENAI_API_KEY unset, ART_BUDGET_USD unset
 ================================================================================
   Prompt Card       : art_source/prompts/anchor_04_icon_helm_greathelm.yaml
   Asset ID          : anchor_04_icon_helm_greathelm (category=icon)
   Mode / Tier       : anchor
   Model             : gpt-image-2.6-flare
   Size & Quality    : 1024x1024 | quality=high | n=1
-  Cache SHA-256     : 77f9fa2fd21436f07b3227c18cd87b5237a2ba0c84486a3e8230ae849563d28b
-  Local Cache Hit   : NO (new request)
-  Est. Tokens [V-02]: in_text~505, in_img~0, out_img~1120
-  Est. Cost (USD)   : $0.036125 / image | Total batch (n=1): $0.036125
-  Ledger Spent SoFar: $0.068615 USD
-  Planned Output    : art_source/raw/anchor_04_icon_helm_greathelm/gen_77f9fa2fd21436f0.png
+  Cache SHA-256     : 7f51ad9e24fdcda8dc8f12c962d8bdae46cddc41b3edad338318dc0ae8e8014b
+  Local Cache Hit   : YES ($0.00 skip)
+  Est. Tokens [V-02]: in_text~544, in_img~0, out_img~1120
+  Est. Cost (USD)   : $0.036320 / image | Total batch (n=1): $0.036320
+  Ledger Spent SoFar: $0.881510 USD
+  Planned Output    : art_source/raw/anchor_04_icon_helm_greathelm/gen_7f51ad9e24fdcda8.png
 --------------------------------------------------------------------------------
   FULL PAYLOAD PROMPT:
     STYLE (fixed prefix, never edit):
     A coarse relief woodcut print in strict two-tone: deep ink black and warm bone white, with limited gold-leaf gilding and one tiny muted accent. Thick confident gouge strokes, large solid black shadow shapes, coarse parallel hatching only in mid-tones, no gradients, no soft shading, no glow, no metallic reflections, no photorealism, no 3D render look. Light from the upper left. The background is a completely flat, uniform medium gray with nothing else. No frame, border, ground, text, letters, runes or symbols.
     
     SUBJECT (icon):
-    Square 1:1 icon composition. A single forged iron knightly great helm armor base item, shown in a front three-quarter (3/4) view with the visor faceplate oriented toward the front-left, centered and occupying about 82% of the square frame. Render as an extra-bold coarse relief woodcut print icon: thick closed deep ink-black outer contour, stark solid ink-black T-shaped visor eye slits and right-side cheek shadow (35% to 48% black mass), and flat warm bone-white lit crown and left cheek plate under upper-left 45-degree lighting. All forged iron plates of the helmet are represented exclusively by bold, wide-spaced horizontal parallel woodcut chisel gouge strokes—strictly zero smooth metallic airbrushing. Wealth motif: a small geometric gold-leaf padlock-shaped rivet clasp on the nasal bridge (under 6% area), paired with one tiny muted burgundy-ink brow cabochon inlay above the visor (under 5% area).
+    Square 1:1 icon composition. A single forged iron knightly great helm armor base item, shown in a front three-quarter (3/4) view with the visor faceplate oriented toward the front-left, centered with generous empty medium gray margin around all four sides (occupying about 80% of the square frame, never touching any border). Bright bone-white-dominant coarse woodcut icon: about 56% to 62% of the helmet's interior is broad, clean, flat unshaded warm bone-white lit iron plates across the entire crown dome, brow band, nasal strip, left cheek plate, and gorget rim (leave the lit bone-white plates clean and solid white without dense dark stripes), balanced against a bold closed deep ink-black outer contour, stark black T-shaped visor slits, and 4 or 5 thick wide-spaced horizontal parallel woodcut chisel shadow gouges on the far right cheek (~36% to 44% total black ink). Wealth motif: a small geometric gold-leaf padlock-shaped rivet clasp on the nasal bridge (~3% area), paired with one tiny muted burgundy-ink diamond inlay above the visor (~2% area).
     
     HARD CONSTRAINTS:
-    Completely flat, uniform medium gray (#808080) background with nothing else—strictly NO icon frame, NO border, NO bone-white paper background, NO glow. Strictly NO spherical mobile-game metal highlights, NO smooth gray gradients on the helmet dome, and NO fine copperplate cross-hatching that would turn gray at 48x48 or 28x28 display sizes. Strictly ZERO text, letters, numbers, runes, heraldic inscriptions, or symbols.
+    Completely flat, uniform medium gray (#808080) background with nothing else—strictly NO icon frame, NO border, NO bone-white paper background, NO glow. Keep warm bone-white plates broad, clean, and dominant (~60% bone-white vs ~40% ink-black)—do NOT cover the dome or left cheek with dense black hatching stripes, and NO gray midtone shading. Strictly ZERO text, letters, numbers, runes, heraldic inscriptions, or symbols.
+================================================================================
+
+================================================================================
+[DRY-RUN] gen_openai.py@1.2.0 | 触发原因: OPENAI_API_KEY unset, ART_BUDGET_USD unset
+================================================================================
+  Prompt Card       : art_source/prompts/eq_boots_base_greaves.yaml
+  Asset ID          : eq_boots_base_greaves (category=icon)
+  Mode / Tier       : anchor
+  Model             : gpt-image-2.6-flare
+  Size & Quality    : 1024x1024 | quality=high | n=1
+  Cache SHA-256     : 5e8f0d29401501e5ea1a27af781cf7bc355e7325762ffd3721ffb737f1f7dcff
+  Local Cache Hit   : YES ($0.00 skip)
+  Est. Tokens [V-02]: in_text~566, in_img~0, out_img~1120
+  Est. Cost (USD)   : $0.036430 / image | Total batch (n=1): $0.036430
+  Ledger Spent SoFar: $0.881510 USD
+  Planned Output    : art_source/raw/eq_boots_base_greaves/gen_5e8f0d29401501e5.png
+--------------------------------------------------------------------------------
+  FULL PAYLOAD PROMPT:
+    STYLE (fixed prefix, never edit):
+    A coarse relief woodcut print in strict two-tone: deep ink black and warm bone white, with limited gold-leaf gilding and one tiny muted accent. Thick confident gouge strokes, large solid black shadow shapes, coarse parallel hatching only in mid-tones, no gradients, no soft shading, no glow, no metallic reflections, no photorealism, no 3D render look. Light from the upper left. The background is a completely flat, uniform medium gray with nothing else. No frame, border, ground, text, letters, runes or symbols.
+    
+    SUBJECT (icon):
+    Square 1:1 icon composition. A pair of heavy medieval forged-iron greaves and armored sabaton war-boots base items, arranged staggered slightly front-and-back in a three-quarter (3/4) side view with armored toes pointing toward the lower-right, centered as a tight unified silhouette with generous empty medium gray margin on all four sides (occupying about 80% of the square frame, never touching any edge, zero floor line). Very bright bone-white-dominant coarse woodcut icon: at least 62% to 66% of the boots' interior is wide, clean, solid unshaded warm bone-white lit iron plates across the knee guards, broad shin greaves, ankle straps, instep lames, and steel toe caps of both boots (leave the shin plates completely clean solid bone-white with ZERO comb-teeth tick marks along the plate edges!), balanced against bold closed deep ink-black outer contours, black sole treads, and only 3 sparse bold shadow cuts on the back heel (~34% to 42% total black ink). Wealth motif: small geometric gold-leaf padlock buckles on the ankle straps (~4% area), paired with distinct muted deep burgundy-crimson diamond inlays on the knee guards (~3% area).
+    
+    HARD CONSTRAINTS:
+    Completely flat, uniform medium gray (#808080) background with nothing else—strictly NO ground line, NO floor shadow, NO icon frame, NO border, NO bone-white paper backdrop. Keep solid warm bone-white armor plates wide and dominant (~64% bone-white vs ~34% ink-black)—strictly NO dense comb-teeth tick hatching along the shin plate borders and NO gray midtone shading. Strictly ZERO text, letters, runes, or symbols.
+================================================================================
+
+================================================================================
+[DRY-RUN] gen_openai.py@1.2.0 | 触发原因: OPENAI_API_KEY unset, ART_BUDGET_USD unset
+================================================================================
+  Prompt Card       : art_source/prompts/eq_chest_base_cuirass.yaml
+  Asset ID          : eq_chest_base_cuirass (category=icon)
+  Mode / Tier       : anchor
+  Model             : gpt-image-2.6-flare
+  Size & Quality    : 1024x1024 | quality=high | n=1
+  Cache SHA-256     : 2d4895ae7654e257a6437e02f9e9ce93f5553c3cc8b457c2849cefb5c08d042c
+  Local Cache Hit   : YES ($0.00 skip)
+  Est. Tokens [V-02]: in_text~548, in_img~0, out_img~1120
+  Est. Cost (USD)   : $0.036340 / image | Total batch (n=1): $0.036340
+  Ledger Spent SoFar: $0.881510 USD
+  Planned Output    : art_source/raw/eq_chest_base_cuirass/gen_2d4895ae7654e257.png
+--------------------------------------------------------------------------------
+  FULL PAYLOAD PROMPT:
+    STYLE (fixed prefix, never edit):
+    A coarse relief woodcut print in strict two-tone: deep ink black and warm bone white, with limited gold-leaf gilding and one tiny muted accent. Thick confident gouge strokes, large solid black shadow shapes, coarse parallel hatching only in mid-tones, no gradients, no soft shading, no glow, no metallic reflections, no photorealism, no 3D render look. Light from the upper left. The background is a completely flat, uniform medium gray with nothing else. No frame, border, ground, text, letters, runes or symbols.
+    
+    SUBJECT (icon):
+    Square 1:1 icon composition. A single heavy medieval forged-iron plate cuirass chest armor base item, shown in a strict symmetrical front view with a strong horizontal pauldrons-and-shoulder line and segmented waist faulds, centered with generous empty medium gray margin on all four sides (occupying about 80% of the square frame, never touching any edge). Bright bone-white-dominant coarse woodcut icon: about 56% to 62% of the cuirass interior is wide, clean, flat unshaded warm bone-white lit iron plates across the broad breastplate, both horizontal shoulder pauldrons, and upper waist lames (leave the lit bone-white armor plates wide and solid white without dense black stripes), balanced against a bold closed deep ink-black outer contour, dark neck/armhole recesses, and 4 or 5 sparse thick horizontal parallel woodcut chisel shadow gouges along the lower-right side (~36% to 44% total black ink). Wealth motif: a small geometric gold-leaf padlock clasp on the center sternum ridge (~4% area), paired with one tiny muted crimson-ink gorget gem rivet at the collar (~2% area).
+    
+    HARD CONSTRAINTS:
+    Completely flat, uniform medium gray (#808080) background with nothing else—strictly NO icon frame, NO border, NO mannequin stand, NO bone-white paper backdrop, NO glow. Keep warm bone-white armor plates wide, clean, and dominant (~60% bone-white vs ~40% ink-black)—do NOT fill the chestplate with dense black stripes, and NO gray midtone shading. Strictly ZERO heraldic crests, text, letters, runes, or symbols.
+================================================================================
+
+================================================================================
+[DRY-RUN] gen_openai.py@1.2.0 | 触发原因: OPENAI_API_KEY unset, ART_BUDGET_USD unset
+================================================================================
+  Prompt Card       : art_source/prompts/eq_gloves_base_gauntlets.yaml
+  Asset ID          : eq_gloves_base_gauntlets (category=icon)
+  Mode / Tier       : anchor
+  Model             : gpt-image-2.6-flare
+  Size & Quality    : 1024x1024 | quality=high | n=1
+  Cache SHA-256     : b570dd752096ca9279ceda89a428519367061830071371d77c7e8e7e0785d652
+  Local Cache Hit   : YES ($0.00 skip)
+  Est. Tokens [V-02]: in_text~559, in_img~0, out_img~1120
+  Est. Cost (USD)   : $0.036395 / image | Total batch (n=1): $0.036395
+  Ledger Spent SoFar: $0.881510 USD
+  Planned Output    : art_source/raw/eq_gloves_base_gauntlets/gen_b570dd752096ca92.png
+--------------------------------------------------------------------------------
+  FULL PAYLOAD PROMPT:
+    STYLE (fixed prefix, never edit):
+    A coarse relief woodcut print in strict two-tone: deep ink black and warm bone white, with limited gold-leaf gilding and one tiny muted accent. Thick confident gouge strokes, large solid black shadow shapes, coarse parallel hatching only in mid-tones, no gradients, no soft shading, no glow, no metallic reflections, no photorealism, no 3D render look. Light from the upper left. The background is a completely flat, uniform medium gray with nothing else. No frame, border, ground, text, letters, runes or symbols.
+    
+    SUBJECT (icon):
+    Square 1:1 icon composition. A single heavy medieval articulated iron plate gauntlet glove base item (one single gauntlet only, NOT a pair), shown in a dorsal three-quarter (3/4) view angled diagonally from the flared wrist cuff at the lower-left to the five armored fingers pointing clearly toward the upper-right, centered with generous empty medium gray margin on all four sides (occupying about 80% of the square frame, never touching any edge; angle the cuff from above so no large black hollow wrist hole is visible). Very bright bone-white-dominant coarse woodcut icon: at least 62% to 66% of the gauntlet's interior is wide, clean, solid unshaded warm bone-white lit iron plates across the entire flared cuff, wrist band, back-of-hand plate, thumb, and all five finger lames (zero comb-teeth hatching along finger edges!), with crisp deep ink-black outer contour and plate joint lines totaling only ~34% to 42% black ink. Wealth motif: a geometric gold-leaf coin-seal clasp on the wrist band (~4% area), plus a distinct muted forest-moss-green gemstone cabochon set into the center of the dorsal hand plate (~3% area).
+    
+    HARD CONSTRAINTS:
+    Completely flat, uniform medium gray (#808080) background with nothing else—strictly a SINGLE gauntlet (do NOT draw two gloves), NO large black cuff hole, NO icon border, NO bone-white paper backdrop, NO glow. Keep solid warm bone-white plates clearly dominant (~64% bone-white vs ~34% ink-black)—do NOT add comb hatching ticks along every finger segment! Strictly ZERO text, letters, numbers, runes, or symbols.
+================================================================================
+
+================================================================================
+[DRY-RUN] gen_openai.py@1.2.0 | 触发原因: OPENAI_API_KEY unset, ART_BUDGET_USD unset
+================================================================================
+  Prompt Card       : art_source/prompts/eq_trinket_base_signet.yaml
+  Asset ID          : eq_trinket_base_signet (category=icon)
+  Mode / Tier       : anchor
+  Model             : gpt-image-2.6-flare
+  Size & Quality    : 1024x1024 | quality=high | n=1
+  Cache SHA-256     : cc620e0ffd9a7d32f0c7787714eea11e34a3a8c043ff5ffb732897500142bf73
+  Local Cache Hit   : YES ($0.00 skip)
+  Est. Tokens [V-02]: in_text~560, in_img~0, out_img~1120
+  Est. Cost (USD)   : $0.036400 / image | Total batch (n=1): $0.036400
+  Ledger Spent SoFar: $0.881510 USD
+  Planned Output    : art_source/raw/eq_trinket_base_signet/gen_cc620e0ffd9a7d32.png
+--------------------------------------------------------------------------------
+  FULL PAYLOAD PROMPT:
+    STYLE (fixed prefix, never edit):
+    A coarse relief woodcut print in strict two-tone: deep ink black and warm bone white, with limited gold-leaf gilding and one tiny muted accent. Thick confident gouge strokes, large solid black shadow shapes, coarse parallel hatching only in mid-tones, no gradients, no soft shading, no glow, no metallic reflections, no photorealism, no 3D render look. Light from the upper left. The background is a completely flat, uniform medium gray with nothing else. No frame, border, ground, text, letters, runes or symbols.
+    
+    SUBJECT (icon):
+    Square 1:1 icon composition. A single heavy medieval debt-covenant signet ring trinket base item, shown in an elevated top-down three-quarter (3/4) view with a wide octagonal flat signet bezel facing upward and a thick chunky carved bone-and-iron ring band looping below, centered with generous empty medium gray margin on all four sides (occupying about 78% of the square frame, never touching any edge). Bright bone-white-dominant coarse woodcut icon: about 55% to 60% of the ring's opaque area is wide, clean, flat unshaded warm bone-white carved surfaces across the broad octagonal signet top plate and thick ring shoulders (leave lit bone-white planes clean and solid white without dense stripes), balanced against a bold closed deep ink-black outer contour, dark inner ring hole shadow bevel, and 3 or 4 thick parallel chisel cuts (~36% to 44% total black ink). Wealth motif: a neat geometric gold-leaf four-claw coin-notched inner collar directly framing the center stone (~5% area—the main band is warm bone-white, NOT gold). Centered in the bezel is a chunky flat-cut deep burgundy-ink gemstone (~5% area, no sparkle rays).
+    
+    HARD CONSTRAINTS:
+    Completely flat, uniform medium gray (#808080) background with nothing else—strictly NO jewelry box, NO chain, NO ground shadow, NO icon border, NO starburst or glint rays. Keep warm bone-white wide and dominant (~58% bone-white vs ~38% ink-black), keep gold strictly to the small inner claw collar (<8%), and NO gray midtone shading inside the ring. Strictly ZERO text, letters, runes, or engraved symbols.
+================================================================================
+
+================================================================================
+[DRY-RUN] gen_openai.py@1.2.0 | 触发原因: OPENAI_API_KEY unset, ART_BUDGET_USD unset
+================================================================================
+  Prompt Card       : art_source/prompts/mon_beast_goldmaw.yaml
+  Asset ID          : mon_beast_goldmaw (category=monster)
+  Mode / Tier       : anchor
+  Model             : gpt-image-2.6-flare
+  Size & Quality    : 1024x1536 | quality=high | n=1
+  Cache SHA-256     : 2995e3dcf112ae9dc6201ea48fac3f229af8b7ff38813574d5016a320d7b17e9
+  Local Cache Hit   : YES ($0.00 skip)
+  Est. Tokens [V-02]: in_text~673, in_img~0, out_img~1353
+  Est. Cost (USD)   : $0.043955 / image | Total batch (n=1): $0.043955
+  Ledger Spent SoFar: $0.881510 USD
+  Planned Output    : art_source/raw/mon_beast_goldmaw/gen_2995e3dcf112ae9d.png
+--------------------------------------------------------------------------------
+  FULL PAYLOAD PROMPT:
+    STYLE (fixed prefix, never edit):
+    A coarse relief woodcut print in strict two-tone: deep ink black and warm bone white, with limited gold-leaf gilding and one tiny muted accent. Thick confident gouge strokes, large solid black shadow shapes, coarse parallel hatching only in mid-tones, no gradients, no soft shading, no glow, no metallic reflections, no photorealism, no 3D render look. Light from the upper left. The background is a completely flat, uniform medium gray with nothing else. No frame, border, ground, text, letters, runes or symbols.
+    
+    SUBJECT (monster):
+    Vertical portrait composition for a 4:5 master ratio. A single hulking bipedal boar-hound glutton beast of the Beast family standing front-facing in an iconic symmetrical tarot stance, full body completely visible from heavy brow to clawed paws with generous empty flat medium gray (#808080) margin on all four sides (never cropped at top, bottom, or sides; hind paws floating cleanly in mid-air with zero ground strip beneath them). Bowed muscular forelimbs and thick hind legs are clearly separated from the barrel torso with open gray negative space so the silhouette reads cleanly at 72x90 pixel scale. One dominant silhouette feature only: a pair of massive thick upward-curved tusks shaped like faceted solid gold bullion bars jutting from the lower jaw (no horns, no wings, no cape). Bright bone-white-dominant relief woodcut: about 54% to 60% of the beast's interior is broad, chunky, clean flat unshaded warm bone-white carved hide plates across the brow, massive shoulders, muscular forearms, rib flanks, and thick thighs (simplify hide into big solid bone-white woodcut blocks with zero fine fur stripes), balanced against bold solid deep ink-black shadow blocks and contours (~38% to 46% total black ink). Wealth corruption motif: the solid gold-bar tusks and a vertical split maw across the belly packed with chunky blank gold coin discs (~7% flat gold-leaf area). One tiny muted moss-green ink accent strictly limited to a small braided collar tag under the chin (~3% area).
+    
+    HARD CONSTRAINTS:
+    Isolated full-body subject floating on a completely flat, uniform medium gray (#808080) background—strictly NO bone-white paper card background, NO card border, NO ground line, NO floor strip, NO coins scattered outside the body. Keep warm bone-white hide blocks wide, chunky, and dominant (~56% bone-white vs ~40% ink-black)—strictly NO fine fur strands, NO dense hatching stripes, and NO gray midtone shading. Strictly ZERO text, letters, numbers, mint marks, runes, or symbols.
+================================================================================
+
+================================================================================
+[DRY-RUN] gen_openai.py@1.2.0 | 触发原因: OPENAI_API_KEY unset, ART_BUDGET_USD unset
+================================================================================
+  Prompt Card       : art_source/prompts/mon_demon_debtor.yaml
+  Asset ID          : mon_demon_debtor (category=monster)
+  Mode / Tier       : anchor
+  Model             : gpt-image-2.6-flare
+  Size & Quality    : 1024x1536 | quality=high | n=1
+  Cache SHA-256     : 7d223d089a7a79297bea34dd20eee8d8ac4c67e5accdcf6aa5460f55a33577e2
+  Local Cache Hit   : YES ($0.00 skip)
+  Est. Tokens [V-02]: in_text~689, in_img~0, out_img~1353
+  Est. Cost (USD)   : $0.044035 / image | Total batch (n=1): $0.044035
+  Ledger Spent SoFar: $0.881510 USD
+  Planned Output    : art_source/raw/mon_demon_debtor/gen_7d223d089a7a7929.png
+--------------------------------------------------------------------------------
+  FULL PAYLOAD PROMPT:
+    STYLE (fixed prefix, never edit):
+    A coarse relief woodcut print in strict two-tone: deep ink black and warm bone white, with limited gold-leaf gilding and one tiny muted accent. Thick confident gouge strokes, large solid black shadow shapes, coarse parallel hatching only in mid-tones, no gradients, no soft shading, no glow, no metallic reflections, no photorealism, no 3D render look. Light from the upper left. The background is a completely flat, uniform medium gray with nothing else. No frame, border, ground, text, letters, runes or symbols.
+    
+    SUBJECT (monster):
+    Vertical portrait composition for a 4:5 master ratio. A single gaunt debt-collector fiend of the Demon family standing front-facing in an iconic symmetrical tarot pose, full body completely visible from horn tips down to cloven hooves with generous empty flat medium gray (#808080) margin on all four sides (never cropped at top, bottom, or sides; hooves floating cleanly in mid-air with zero ground strip beneath them). Arms and legs are clearly separated from the lean torso with open gray negative space between limbs so the silhouette reads cleanly at 72x90 pixel scale. One dominant silhouette feature only: a pair of tall upward-swept goat-demon horns (no wings, no tail breaking the silhouette, no wide cloak). Bright bone-white-dominant relief woodcut: about 55% to 60% of the figure's interior is wide, clean, flat unshaded warm bone-white carved surfaces across the horns, skull-like fiend face, broad chest, forearms, thighs, shin greaves, and rolled parchment scroll (leave lit bone-white planes clean and solid white without dense black hatching stripes), balanced against crisp deep ink-black contours and selective bold black shadow recesses (~38% to 46% total black ink). Wealth corruption motif: heavy gold-leaf padlocked debt chains shackled to wrist cuffs and a tightly rolled blank contract scroll sealed with a plain round gold wax disc at the hip (~6% gold-leaf area). One tiny muted dark blood-crimson ink accent strictly limited to a small torn loincloth sash knot (~3% area).
+    
+    HARD CONSTRAINTS:
+    Isolated full-body subject floating on a completely flat, uniform medium gray (#808080) background—strictly NO bone-white paper card background, NO tarot card border, NO archway, NO ground line, NO floor strip, NO drop shadow. Keep warm bone-white planes wide and dominant (~58% bone-white vs ~40% ink-black) with ZERO gray midtone fills inside the character and ZERO fine copperplate hatching. The rolled scroll and wax seal must be 100% blank geometric shapes with ZERO text, letters, numbers, runes, ruled lines, or symbols.
 ================================================================================
 

@@ -1,5 +1,5 @@
 license_id,source_type,source_ref,license_name,proof_path,acquired_date,account,attribution_required,redistribution_raw_allowed,notes
 LIC-PIXELFX-01,pixelfx,github.com/patch-gg/pixelfx@5294518ce7c72e48b6100a744596e0acf57f2826,MIT,licenses/proofs/pixelfx_mit.txt,2026-11-13,public,Y,N,commit=5294518ce7c72e48b6100a744596e0acf57f2826; effect=src/fx/explosions/small-explosion.js (Copyright 2026 Hugo Duprez / Sprite Fusion); NOTICE=licenses/proofs/pixelfx_NOTICE.md; gallery/fonts/PatchPixel 已排除
-LIC-OPENAI-01,openai,api.openai.com/v1/images,OpenAI Terms of Use (2026 snapshot),licenses/proofs/openai_terms_2026.txt,2026-11-12,user_key,N,N,商用产出物所有权归用户所有
+LIC-OPENAI-01,openai,api.openai.com/v1/images,OpenAI Terms of Use & Business Terms (2026 snapshot),licenses/proofs/openai_terms_2026.txt,2026-11-13,user_key,N,N,[V-03] 已核实归档 Terms of Use / Business Terms §3.1: OpenAI 将 Output 全部权利转让给用户，允许商用游戏发行且无需署名; 提示词禁写艺术家姓名与第三方 IP
 LIC-FONT-NOTO,font,Google Fonts Noto Serif SC,SIL OFL 1.1,licenses/texts/OFL.txt,2026-11-12,public,Y,N,字形嵌入游戏分发合规
 LIC-PROC-01,procedural,tools/art/procedural_woodcut,First-Party Original Procedural Asset,N/A,2026-11-13,project_team,N,Y,项目自研程序化生成测试资产与几何矢量资产

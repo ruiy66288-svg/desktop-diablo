@@ -184,21 +184,27 @@ def separate_four_channels(
     v_ch = hsv[:, :, 2].astype(np.int32)  # 0..255
 
     fg = alpha > 8
-    warm_gold_hue = (h_ch >= 12) & (h_ch <= 36)
+    warm_gold_hue = (h_ch >= 11) & (h_ch <= 31)
+    undead_warm_hue = (h_ch >= 11) & (h_ch <= 36)
+
+    # 自适应估算当前图像高亮骨白受光面的基础饱和度中位数 (兼容纯白 S~40 与暖羊皮骨白 S~75)
+    bright_fg = fg & (v_ch >= 175)
+    bone_s_med = float(np.median(s_ch[bright_fg])) if int(bright_fg.sum()) >= 32 else 50.0
+    gold_s_floor = int(round(min(115.0, max(82.0, bone_s_med + 30.0))))
 
     if accent_family == "none":
         g_mask = np.zeros_like(fg)
-        b_mask = fg & warm_gold_hue & (s_ch >= 65) & (v_ch >= 75)
+        b_mask = fg & warm_gold_hue & (s_ch >= gold_s_floor) & (v_ch >= 85)
     elif accent_family in ("undead", "fallen_saint"):
-        # 不死/堕圣族群油墨色为低明度/中饱和旧金 (#B08D57)，高亮高饱和金箔归入 B 通道镀金
-        b_mask = fg & warm_gold_hue & ((v_ch >= 188) | (s_ch >= 142)) & (s_ch >= 75) & (v_ch >= 95)
-        warm_ochre_ink = fg & warm_gold_hue & (~b_mask) & (s_ch >= 68) & (v_ch >= 55)
-        other_ink = fg & (~warm_gold_hue) & (s_ch >= 65) & (v_ch >= 40)
+        # 不死/堕圣: 高明度金属金箔 (V>=182) 归入 B 镀金; 中低明度旧金/橄榄褐油墨 (V<182) 归入 G 点缀
+        b_mask = fg & undead_warm_hue & (v_ch >= 182) & (s_ch >= gold_s_floor)
+        warm_ochre_ink = fg & undead_warm_hue & (~b_mask) & (s_ch >= max(105, gold_s_floor)) & (v_ch >= 60)
+        other_ink = fg & (~undead_warm_hue) & (s_ch >= 80) & (v_ch >= 38)
         g_mask = warm_ochre_ink | other_ink
     else:
-        # 镀金 (B): 暖金黄 H in [12, 36], 高饱和度; 其余彩色油墨 (血墨/苔绿/酒红/宝石) 归入 G 通道
-        b_mask = fg & warm_gold_hue & (s_ch >= 68) & (v_ch >= 75)
-        g_mask = fg & (~warm_gold_hue) & (s_ch >= 62) & (v_ch >= 38)
+        # 镀金 (B): 暖金黄 H in [11, 31] (H>=32 的苔绿/橄榄绿宝石与衣领直接归入 G 通道!)
+        b_mask = fg & warm_gold_hue & (s_ch >= gold_s_floor) & (v_ch >= 85)
+        g_mask = fg & (~warm_gold_hue) & (s_ch >= 80) & (v_ch >= 38)
 
     # 骨白 (R): 非镀金、非油墨点缀色的高明度低饱和受光面
     luma = (
@@ -257,7 +263,7 @@ def standardize_and_downsample(
         else:
             # 怪物/Boss 竖版: 高度占 target_height_ratio，脚底对齐 foot_line_ratio，水平居中
             desired_h = spec.target_height_ratio * float(work_h)
-            max_allowed_w = 0.92 * float(work_w)
+            max_allowed_w = 0.96 * float(work_w)
             fit_scale = min(desired_h / float(crop_h), max_allowed_w / float(crop_w))
             new_w = max(1, int(round(crop_w * fit_scale)))
             new_h = max(1, int(round(crop_h * fit_scale)))
@@ -296,9 +302,9 @@ def standardize_and_downsample(
 
     a_final = np.where(valid_fg, a_clean, 0).astype(np.uint8)
 
-    # 优先级 B(镀金) > G(油墨点缀) > R(骨白) > 墨黑(0,0,0)
-    is_b = valid_fg & (b_ch >= 110) & (b_ch >= g_ch)
-    is_g = valid_fg & (~is_b) & (g_ch >= 110)
+    # 优先级 B(镀金) > G(油墨点缀) > R(骨白) > 墨黑(0,0,0)；72 阈值确保 96x96 图标上的微小锁扣/宝石不被下采样吞没
+    is_b = valid_fg & (b_ch >= 72) & (b_ch >= g_ch)
+    is_g = valid_fg & (~is_b) & (g_ch >= 72)
     is_r = valid_fg & (~is_b) & (~is_g) & (r_ch >= 120)
 
     out_rgba = np.zeros((out_h, out_w, 4), dtype=np.uint8)

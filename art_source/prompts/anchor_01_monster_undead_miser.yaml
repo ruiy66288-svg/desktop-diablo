@@ -1,4 +1,4 @@
-# 《桌面破坏神》WP-A2 锚点提示词卡 #1: 普通怪物锚点 — 守财亡骸 (不死族)
+# 《桌面破坏神》WP-A2/WP-A3 锚点提示词卡 #1: 普通怪物锚点 — 守财亡骸 (不死族)
 # 依据: docs/03 §02.2 & §06 | docs/04 §1.1 & §4.1 | docs/verification_log.md [风格方向板 v1] 纠偏 1–5
 asset_id: anchor_01_monster_undead_miser
 target_export_name: mon_undead_miser_v01.png
@@ -14,23 +14,32 @@ size: "1024x1536"
 master_output_size: "352x440"
 dominant_silhouette_feature: "jagged bone crown (single dominant feature only)"
 wealth_motif: "gold coin wedged inside left eye socket and heavy coin pouches chained across the ribcage"
+rejection_history:
+  - file: "art_source/rejected/anchor_01_monster_undead_miser/gen_01_5f2605ef944092eb_R-MASS_R-AIERR.png"
+    codes: ["R-MASS", "R-AIERR"]
+    reason: "Gen-01 ink black was 57.43% (>55% monster cap) because iron shoulder pauldrons had smooth gray shading and rib interior was overly black; rib strips also caused 43% gray averaging at 72x90."
+    fix: "Removed gray iron shoulder pauldrons in favor of broad flat bone-white carved skull, crown, sternum breast-bone plate, wide bone-white burial tunic, and thick limb bones so warm bone-white covers ~56% of the figure and ink-black stays cleanly within 38%-50%."
 
 subject_prompt: >-
-  Vertical portrait composition for a 4:5 master ratio. A single skeletal miser revenant of the Undead
-  family, front-facing in a symmetrical iconic tarot standing pose, full body visible from crown tip to
-  skeletal feet, centered horizontally, filling about 86% of the image height with feet resting near the
-  92% height line. Arms and legs are clearly separated from the ribcage and pelvis so the outer silhouette
-  reads cleanly at small 72x90 pixel scale. One dominant silhouette feature only: a tall jagged bone crown
-  atop the skull (no wings, no horns, no oversized cape). Wealth corruption motif: one heavy gold coin
-  wedged tightly into the left eye socket and two bulging coin pouches bound across the ribcage with thick
-  iron links, rendered as flat gold-leaf gilding covering no more than 8% of the body. Tiny muted old-ochre
-  ink accent strictly limited to a small torn burial sash knot at the waist (under 5% area). Tattered cloth
-  and bone surfaces use extra-bold, wide-spaced woodcut chisel gouges and large solid ink-black shadow blocks
-  (40% to 50% black mass); any iron shoulder plates are shown solely by coarse parallel horizontal gouge cuts.
+  Vertical portrait composition for a 4:5 master ratio. A single sturdy skeletal miser revenant of the Undead
+  family, front-facing in a symmetrical iconic tarot standing pose, full body completely visible from crown
+  tip to skeletal feet with generous empty flat medium gray (#808080) margin on all four sides (never cropped
+  at top or bottom, feet floating cleanly in mid-air with zero ground strip beneath them). Arms and legs are
+  clearly separated from the torso with open gray negative space between limbs so the silhouette reads cleanly
+  at small 72x90 pixel scale. One dominant silhouette feature only: a tall broad jagged bone crown atop the
+  skull (no wings, no horns, no cape). Bright bone-white-dominant relief woodcut: about 55% to 60% of the
+  figure's interior is wide, continuous, flat unshaded warm bone-white carved surfaces—broad bone crown, bold
+  bone skull, wide fused bone sternum plate and thick wide ribs, broad ragged bone-white burial kilt, and
+  chunky thick arm and leg bones—so black ink outlines and shadow recesses total only about 38% to 46% of the
+  figure. Wealth corruption motif: one heavy gold coin wedged tightly into the left eye socket and two bulging
+  coin pouches chained across the chest, rendered as flat gold-leaf gilding covering about 7% of the body. One
+  tiny muted oxidized bronze-olive ink accent strictly limited to a small burial sash knot at the waist (under
+  3% area).
 
 hard_constraints: >-
-  Isolated subject floating on a completely flat, uniform medium gray (#808080) background—strictly NO
-  bone-white paper card background, NO tarot card frame, NO archway, NO ground shadow. Strictly NO fine
-  copperplate engraving lines or dense thin hatching on cloth or bone (every carved stroke must be thick and
-  bold so it stays crisp at 72px height without turning muddy gray). Strictly NO smooth metallic shading or
-  specular highlights. Strictly NO text, letters, numbers, runes, symbols, seals with writing, or borders.
+  Isolated full-body subject floating on a completely flat, uniform medium gray (#808080) background—strictly
+  NO bone-white paper card background, NO tarot card frame, NO ground line, NO floor strip, NO drop shadow.
+  Strictly NO gray-shaded metal shoulder pads (every surface must be pure warm bone-white, pure ink-black, flat
+  gold-leaf, or the tiny sash accent—zero gray fills inside the character!). Keep warm bone-white planes wide,
+  chunky, and dominant (~58% white vs ~40% black) with ZERO fine thin hatching so 72x90 thumbnail contrast stays
+  razor-sharp. Strictly NO text, letters, numbers, runes, coin inscriptions, or symbols.

@@ -1,7 +1,7 @@
-# 《桌面破坏神》WP-A2 锚点提示词卡 #3: 装备底材图标锚点 — 阔刃断债剑 (武器槽 weapon)
+# 《桌面破坏神》WP-A2/WP-A3 锚点提示词卡 #3: 装备底材图标锚点 — 阔刃断债巨剑 (武器槽 weapon)
 # 依据: docs/03 §02.4 & §06 | docs/04 §3 & §4.1 | docs/verification_log.md [风格方向板 v1] 纠偏 1–5
 asset_id: anchor_03_icon_weapon_sword
-target_export_name: eq_weapon_base_broadsword_v01.png
+target_export_name: eq_weapon_base_greatsword_v01.png
 category: icon
 slot: weapon
 accent_family: demon
@@ -14,21 +14,27 @@ size: "1024x1024"
 master_output_size: "96x96"
 view_rule: "45-degree diagonal from bottom-left pommel to top-right blade tip, spanning ~85% of diagonal"
 wealth_motif: "small gold-leaf coin-scale clasp set into the center of the crossguard"
+rejection_history:
+  - file: "art_source/rejected/anchor_03_icon_weapon_sword/gen_01_1759d6fee8a49f2f_R-MASS.png"
+    codes: ["R-MASS"]
+    reason: "Gen-01 ink black was 66.08% (>50% icon cap) because the lower-right blade half, grip, and thick black border left only 32.4% bone-white."
+    fix: "Made the wide broad-bladed greatsword predominantly bright warm bone-white (~58% flat bone-white across the wide blade face, crossguard, and pommel ring) with a crisp moderate black contour and narrow lower-right shadow bevel so ink-black stays cleanly within 34%-46%."
 
 subject_prompt: >-
-  Square 1:1 icon composition. A single heavy medieval broadsword weapon base item, placed diagonally at a
-  45-degree angle from the pommel at the bottom-left to the broad blade point at the top-right, centered and
-  covering about 85% of the diagonal (occupying roughly 82% of the square frame). Render as an extra-bold
-  coarse relief woodcut print icon with a thick closed deep ink-black outer contour, stark flat bone-white
-  upper-left lit blade bevel, and solid ink-black lower-right fuller and shadow bevel (35% to 45% black mass).
-  All steel and iron surfaces of the blade, straight crossguard, and heavy wheel pommel are depicted strictly
-  by bold, wide-spaced parallel woodcut chisel gouge bands—zero smooth tonal gradients. A tiny gold-leaf
-  gilding motif is limited to a geometric coin-shaped rivet clasp at the center of the crossguard (under 6%
-  area), and a single small muted crimson-ink faceted pommel stone provides the tiny accent (under 5% area).
+  Square 1:1 icon composition. A single wide-bladed medieval greatsword weapon base item, placed diagonally at
+  a 45-degree angle from the wheel pommel at the bottom-left to the broad blade point at the top-right,
+  centered with clear empty medium gray margin around all four corners (occupying about 82% of the square
+  frame, never touching any edge). Bright bone-white-dominant coarse woodcut icon: about 58% to 64% of the
+  sword's interior area is wide, open, flat unshaded warm bone-white lit steel across almost the entire broad
+  blade face, wide straight crossguard, ribbed grip highlights, and wheel pommel face, paired with a crisp
+  closed deep ink-black outer contour, a clean central black fuller groove, and a narrow solid ink-black
+  shadow edge along the lower-right side (~36% to 44% total black ink; only 3 or 4 sparse bold woodcut gouge
+  notches, NOT half-black blade shading). A small geometric gold-leaf coin-clasp sits at the center of the
+  crossguard (~3% area), and a small muted crimson-ink faceted stone sits in the pommel (~3% area).
 
 hard_constraints: >-
   Completely flat, uniform medium gray (#808080) background with nothing else—strictly NO square slot frame,
-  NO border, NO bone-white paper backdrop, NO drop shadow, NO aura or sparkles. Every woodcut stroke must be
-  extra-thick so the sword silhouette and fuller remain razor-clear when downsampled to 48x48 equipment slot
-  and 28x28 ground loot icon sizes without turning muddy gray. Strictly NO smooth mobile-game metallic
-  gradients, NO shiny specular highlights, and ZERO runes, engravings of letters, text, or symbols on the blade.
+  NO border, NO bone-white paper backdrop, NO drop shadow, NO glow. Keep warm bone-white clearly dominant over
+  black (~60% bone-white vs ~40% ink-black) so the broad blade gleams brightly in bone-white at 48x48 and 28x28
+  sizes without turning dark or gray. Strictly NO smooth metallic gradients, NO gray fills inside the sword,
+  NO fine hatching lines, and ZERO runes, letters, text, or symbols.

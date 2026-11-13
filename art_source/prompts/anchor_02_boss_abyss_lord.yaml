@@ -1,7 +1,7 @@
-# 《桌面破坏神》WP-A2 锚点提示词卡 #2: Boss 锚点 — 深渊魔主 (恶魔族)
+# 《桌面破坏神》WP-A2/WP-A3 锚点提示词卡 #2: Boss 锚点 — 深渊魔主 (恶魔族)
 # 依据: docs/03 §02.3 & §06 | docs/04 §1.1 & §4.1 | docs/verification_log.md [风格方向板 v1] 纠偏 1–5
 asset_id: anchor_02_boss_abyss_lord
-target_export_name: boss_demon_abyss_lord_v01.png
+target_export_name: boss_demon_abyss-lord_v01.png
 category: boss
 family: demon
 accent_family: demon
@@ -14,24 +14,32 @@ size: "1024x1536"
 master_output_size: "416x520"
 dominant_silhouette_feature: "sweeping curved demon horns + jagged iron crown (two dominant boss features)"
 wealth_motif: "heavy padlocked debt chains coiled across the chest and a blank wax-sealed debt ledger at the waist"
+rejection_history:
+  - file: "art_source/rejected/anchor_02_boss_abyss_lord/gen_01_d30ac29f38b455ab_R-MASS.png"
+    codes: ["R-MASS"]
+    reason: "Gen-01 ink black was 69.60% (>60% boss cap) because dense horizontal hatching inside lit armor plates plus solid black under-tunic reduced bone-white area to 24.6%."
+    fix: "Expanded wide, solid unhatched flat warm bone-white lit armor plates across upper-left chestplate, horns, pauldrons, gauntlets, tassets, and greaves (~42% bone-white + ~6% gold + ~2% crimson) so total ink-black lands cleanly inside the 50%-60% Boss V4 window."
 
 subject_prompt: >-
   Vertical portrait composition for a 4:5 master ratio. Make it a towering boss seen from a slightly low
-  upward camera angle (about 10 degrees), broad armored shoulders spanning over 72% of the frame width,
-  full body from horn tips to clawed hooves centered horizontally and filling about 92% of the image height.
-  Depict the Abyssal Archfiend of the Demon family in a commanding symmetrical front-facing tarot stance with
-  limbs clearly separated from the torso. Two dominant silhouette features: massive sweeping curved ram-demon
-  horns framing a jagged iron crown. Heavier solid ink-black shadow masses covering 52% to 58% of the figure.
-  Wealth corruption motif: thick padlocked debt chains criss-crossing the chest plate and a heavy closed blank
-  ledger bound by a large geometric gold padlock at the belt, rendered as flat gold-leaf gilding covering no
-  more than 10% of the body. One small muted dark blood-crimson ink accent restricted to the inner fold of the
-  torn waist mantle (under 8% area). Heavy breastplate, gauntlets, and mantle folds are carved exclusively with
-  bold, wide-spaced parallel woodcut chisel gouges and stark flat bone-white lit planes from the upper left.
+  upward camera angle (about 10 degrees), broad armored shoulders spanning about 72% of the frame width,
+  full body completely visible from horn tips to clawed hooves with clear empty flat medium gray (#808080)
+  margin on all four sides (never cropped at top, bottom, or sides; hooves floating cleanly in mid-air with
+  zero ground strip beneath them). Depict the Abyssal Archfiend of the Demon family in a commanding symmetrical
+  front-facing tarot stance with arms and legs clearly separated from the torso (no floor-length cape). Two
+  dominant silhouette features: massive sweeping curved ram-demon horns framing a jagged iron crown. Strict
+  54%-black / 40%-bone-white balance: large, broad, clean flat warm bone-white lit surfaces cover the upper
+  surfaces of both horns, the broad chestplate, massive tiered pauldrons, gauntlets, armored thigh tassets,
+  and shin greaves (keep lit bone-white armor plates wide and mostly solid white with only 2 or 3 thick coarse
+  horizontal chisel cuts per plate rather than dense stripes), balanced against bold solid deep ink-black
+  shadow recesses (~54% total black ink). Wealth corruption motif: thick padlocked gold-leaf debt chains
+  criss-crossing the chest and a closed blank geometric gold-bound ledger padlocked at the belt (~6% gold-leaf
+  area). One small muted dark blood-crimson ink accent on the inner fold of the short waist mantle (~3% area).
 
 hard_constraints: >-
-  Isolated subject on a completely flat, uniform medium gray (#808080) background—strictly NO bone-white card
-  paper background, NO gothic arch frame, NO background halo (arch and sigil ring are drawn procedurally in
-  Godot). Strictly NO fine copperplate hatching on cloak, fur, or horns that would blur into gray at 72x90px.
-  Armor and metal surfaces must have ZERO smooth gradients and ZERO metallic highlights—use only coarse parallel
-  horizontal woodcut gouge bands. The closed debt ledger and seals must be 100% blank geometric shapes with
-  ZERO text, letters, pseudo-runes, script, numbers, or symbols anywhere in the image.
+  Isolated full-body subject on a completely flat, uniform medium gray (#808080) background—strictly NO
+  bone-white card paper background, NO gothic arch frame, NO ground line, NO floor strip. Keep lit bone-white
+  armor plates wide and open so total black ink stays strictly between 50% and 58% (do NOT over-fill lit armor
+  plates with dense black stripes, and NO gray midtone fills inside the figure). Armor and metal surfaces must
+  have ZERO smooth gradients and ZERO metallic highlights. The closed debt ledger must be 100% blank geometric
+  shapes with ZERO text, letters, pseudo-runes, script, numbers, or symbols anywhere.

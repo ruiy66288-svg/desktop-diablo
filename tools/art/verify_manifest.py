@@ -211,6 +211,10 @@ def verify_repository_art(
         ext = file_path.suffix.lower()
         if ext in {".gdshader", ".import", ".tres", ".tscn", ".gd"}:
             continue
+        if ext == ".uid":
+            paired_code = Path(str(file_path)[:-4])
+            if paired_code.exists() and paired_code.suffix.lower() in {".gdshader", ".gd", ".tres", ".tscn"}:
+                continue
         if ext == ".json":
             rel_posix = file_path.relative_to(root_abs).as_posix()
             paired_png_rel = rel_posix[:-5] + ".png"

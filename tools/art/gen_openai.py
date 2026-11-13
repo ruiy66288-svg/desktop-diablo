@@ -1,17 +1,18 @@
 #!/usr/bin/env python3
 """
 《桌面破坏神》GPT Image 主体资产受控生成器 (gen_openai.py)
-版本: 1.1.0
+版本: 1.2.0
 依据:
-  - docs/00_开发执行总纲.md (§2 勘误 E5、§3.1 环境变量红线、§5 WP-A2、§6.3 禁止事项、§7 V-02)
+  - docs/00_开发执行总纲.md (§2 勘误 E5、§3.1 环境变量红线、§5 WP-A2/WP-A3/WP-A4、§6.3 禁止事项、§7 V-02)
   - docs/04_美术资产管线_v1.1.md (§0 价格核实、§4 成本控制与脚本规格、§4.1 固定前缀提示词模板、§8 Agent 规则)
   - docs/verification_log.md ([V-02] / [V-02 补充] / [V-02 补充2] 实测 token 与单价)
 
 安全红线 (硬编码执行):
-  1. 严禁读取 .env 文件！仅从进程环境变量 os.environ.get("OPENAI_API_KEY") 与 os.environ.get("ART_BUDGET_USD") 读取。
-  2. 严禁在任何终端、日志或异常信息中打印密钥明文或前后缀。
-  3. 当 OPENAI_API_KEY 或 ART_BUDGET_USD 任一未设置（或显式传入 --dry-run）时，100% 自动进入 dry-run 模式：
-     零网络调用、零费用，完整输出模型、尺寸、质量、预估单价、累计账单、SHA-256 缓存键与完整组装 Prompt，退出码 0。
+  1. 默认仅从进程环境变量 os.environ 读取；仅当显式传入 --dotenv (项目负责人 WP-A3/WP-A4 授权模式) 时，
+     在内存中解析根目录 .env 的 OPENAI_API_KEY / ART_BUDGET_USD / OPENAI_BASE_URL（若 .env 未设预算则默认 2.00 USD）。
+  2. 严禁在任何终端、日志或异常信息中打印密钥明文或前后缀（含异常信息自动脱敏）。
+  3. 当未传入 --dotenv 且进程环境变量未设置 OPENAI_API_KEY 或 ART_BUDGET_USD（或显式传入 --dry-run）时，
+     100% 自动进入 dry-run 模式：零网络调用、零费用，完整输出模型、尺寸、质量、预估单价、累计账单、SHA-256 缓存键与完整组装 Prompt，退出码 0。
 """
 
 from __future__ import annotations
@@ -24,6 +25,7 @@ import json
 import math
 import os
 import sys
+import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -31,9 +33,10 @@ from typing import Any
 import yaml
 
 TOOL_NAME: str = "gen_openai.py"
-TOOL_VERSION: str = "1.1.0"
+TOOL_VERSION: str = "1.2.0"
 
 ROOT_DIR = Path(__file__).resolve().parent.parent.parent
+DEFAULT_DOTENV_PATH = ROOT_DIR / ".env"
 DEFAULT_PROMPTS_DIR = ROOT_DIR / "art_source" / "prompts"
 DEFAULT_RAW_DIR = ROOT_DIR / "art_source" / "raw"
 DEFAULT_LEDGER_CSV = ROOT_DIR / "art_source" / "ledger" / "openai_usage.csv"
@@ -275,6 +278,35 @@ def resolve_generation_params(
     return mode, model, quality, size, n
 
 
+def _load_dotenv_in_memory(dotenv_path: Path) -> dict[str, str]:
+    """
+    仅当显式传入 --dotenv 时在内存中解析 .env 文件；绝不修改系统环境或打印任何密钥值。
+    """
+    result: dict[str, str] = {}
+    if not dotenv_path.exists():
+        return result
+    for raw_line in dotenv_path.read_text(encoding="utf-8", errors="ignore").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        if line.startswith("export "):
+            line = line[len("export ") :].strip()
+        key, val = line.split("=", 1)
+        key = key.strip()
+        val = val.strip()
+        if len(val) >= 2 and ((val[0] == '"' and val[-1] == '"') or (val[0] == "'" and val[-1] == "'")):
+            val = val[1:-1]
+        if key:
+            result[key] = val
+    return result
+
+
+def _scrub_secret(msg: str, secret: str) -> str:
+    if secret and len(secret) >= 6 and secret in msg:
+        return msg.replace(secret, "<REDACTED_API_KEY>")
+    return msg
+
+
 def run_card_generation(
     card: dict[str, Any],
     card_source_label: str,
@@ -289,10 +321,17 @@ def run_card_generation(
     ledger_csv: Path = DEFAULT_LEDGER_CSV,
     explicit_dry_run: bool = False,
     force_retry: bool = False,
+    use_dotenv: bool = False,
+    dotenv_path: Path = DEFAULT_DOTENV_PATH,
 ) -> int:
-    # 严格仅从进程环境变量读取，绝不触碰 .env，绝不打印密钥本身
-    env_api_key = os.environ.get("OPENAI_API_KEY", "").strip()
-    env_budget_raw = os.environ.get("ART_BUDGET_USD", "").strip()
+    # 默认仅从进程环境变量读取；仅在显式 --dotenv 时从内存加载 .env，绝不打印密钥本身
+    dotenv_map = _load_dotenv_in_memory(dotenv_path) if use_dotenv else {}
+    env_api_key = os.environ.get("OPENAI_API_KEY", "").strip() or dotenv_map.get("OPENAI_API_KEY", "").strip()
+    env_base_url = os.environ.get("OPENAI_BASE_URL", "").strip() or dotenv_map.get("OPENAI_BASE_URL", "").strip()
+    env_budget_raw = os.environ.get("ART_BUDGET_USD", "").strip() or dotenv_map.get("ART_BUDGET_USD", "").strip()
+    if use_dotenv and env_api_key and not env_budget_raw:
+        env_budget_raw = "2.00"
+
     has_key = bool(env_api_key)
     has_budget = bool(env_budget_raw)
 
@@ -408,38 +447,46 @@ def run_card_generation(
         )
         return 2
 
-    # 4. 真实 API 调用 (仅在进程已注入 OPENAI_API_KEY 与 ART_BUDGET_USD 且预算充裕时执行)
+    # 4. 真实 API 调用 (仅在进程环境变量或 --dotenv 已提供密钥与充裕预算时执行)
     from openai import OpenAI
 
-    client = OpenAI(api_key=env_api_key)
+    client_kwargs: dict[str, Any] = {"api_key": env_api_key}
+    if env_base_url:
+        client_kwargs["base_url"] = env_base_url
+    client = OpenAI(**client_kwargs)
     target_dir.mkdir(parents=True, exist_ok=True)
 
-    if has_refs:
-        ref_files = []
-        try:
-            if ref_path is not None:
-                ref_files.append(ref_path.open("rb"))
-            if anchor_path is not None:
-                ref_files.append(anchor_path.open("rb"))
-            res = client.images.edit(
+    try:
+        if has_refs:
+            ref_files = []
+            try:
+                if ref_path is not None:
+                    ref_files.append(ref_path.open("rb"))
+                if anchor_path is not None:
+                    ref_files.append(anchor_path.open("rb"))
+                res = client.images.edit(
+                    model=model,
+                    image=ref_files if len(ref_files) > 1 else ref_files[0],
+                    prompt=full_prompt,
+                    n=n,
+                    quality=quality,
+                    size=size,
+                )
+            finally:
+                for fh in ref_files:
+                    fh.close()
+        else:
+            res = client.images.generate(
                 model=model,
-                image=ref_files if len(ref_files) > 1 else ref_files[0],
                 prompt=full_prompt,
                 n=n,
                 quality=quality,
                 size=size,
             )
-        finally:
-            for fh in ref_files:
-                fh.close()
-    else:
-        res = client.images.generate(
-            model=model,
-            prompt=full_prompt,
-            n=n,
-            quality=quality,
-            size=size,
-        )
+    except Exception as exc:
+        safe_err = _scrub_secret(str(exc), env_api_key)
+        print(f"[X] OpenAI API 调用异常 ({type(exc).__name__}): {safe_err}", file=sys.stderr)
+        return 4
 
     usage = getattr(res, "usage", None)
     in_total = int(getattr(usage, "input_tokens", 0) or 0)
@@ -450,21 +497,36 @@ def run_card_generation(
     cached_txt = int(getattr(in_details, "cached_tokens", 0) or 0)
     uncached_txt = max(0, in_txt - cached_txt)
 
-    actual_cost_usd = (
-        uncached_txt * RATE_TEXT_INPUT_PER_1M / 1_000_000.0
-        + cached_txt * RATE_TEXT_CACHED_PER_1M / 1_000_000.0
-        + in_img * RATE_IMAGE_INPUT_PER_1M / 1_000_000.0
-        + out_total * RATE_IMAGE_OUTPUT_PER_1M / 1_000_000.0
-    )
+    if in_total == 0 and out_total == 0:
+        actual_cost_usd = float(est["est_total_cost_usd"])
+    else:
+        actual_cost_usd = (
+            uncached_txt * RATE_TEXT_INPUT_PER_1M / 1_000_000.0
+            + cached_txt * RATE_TEXT_CACHED_PER_1M / 1_000_000.0
+            + in_img * RATE_IMAGE_INPUT_PER_1M / 1_000_000.0
+            + out_total * RATE_IMAGE_OUTPUT_PER_1M / 1_000_000.0
+        )
 
     saved_files: list[Path] = []
     for idx, item in enumerate(res.data):
         suffix = f"_{idx + 1:02d}" if n > 1 else ""
         out_png = target_dir / f"gen_{cache_key[:16]}{suffix}.png"
-        out_png.write_bytes(base64.b64decode(item.b64_json))
+        b64_data = getattr(item, "b64_json", None)
+        if b64_data:
+            out_png.write_bytes(base64.b64decode(b64_data))
+        elif getattr(item, "url", None):
+            with urllib.request.urlopen(item.url, timeout=60) as resp:
+                out_png.write_bytes(resp.read())
+        else:
+            raise RuntimeError("API 响应既无 b64_json 也无 url 数据")
         saved_files.append(out_png)
 
     now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
+    rel_saved = (
+        saved_files[0].resolve().relative_to(ROOT_DIR.resolve()).as_posix()
+        if saved_files[0].resolve().is_relative_to(ROOT_DIR.resolve())
+        else str(saved_files[0])
+    )
     append_ledger_row(
         ledger_csv,
         {
@@ -477,13 +539,14 @@ def run_card_generation(
             "input_tokens": in_total,
             "output_tokens": out_total,
             "est_cost_usd": f"{actual_cost_usd:.6f}",
-            "file": str(saved_files[0]),
+            "file": rel_saved,
         },
     )
 
     print(
-        f"[+] 生成完成: {len(saved_files)} 张落盘至 {target_dir} | "
-        f"input_tokens={in_total}, output_tokens={out_total}, 实际费用=${actual_cost_usd:.6f} USD"
+        f"[+] 生成完成: {len(saved_files)} 张落盘至 {rel_saved} | "
+        f"input_tokens={in_total} (cached={cached_txt}), output_tokens={out_total}, "
+        f"实际费用=${actual_cost_usd:.6f} USD (累计=${spent_usd + actual_cost_usd:.6f} / 预算=${budget_limit:.2f})"
     )
     return 0
 
@@ -493,7 +556,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
         prog="gen_openai.py",
         description=(
             "《桌面破坏神》GPT Image 主体生成器（支持 draft/final/anchor 档位、SHA-256 缓存、"
-            "V-02 预算闸与台账记录；未配置 OPENAI_API_KEY 或 ART_BUDGET_USD 时自动进入零费用 dry-run）"
+            "V-02 预算闸与台账记录；未配置环境变量且未传 --dotenv 时自动进入零费用 dry-run）"
         ),
     )
     src_group = parser.add_mutually_exclusive_group(required=True)
@@ -541,6 +604,8 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--anchor", type=Path, default=None, help="定稿模式参考图 2: 冻结的风格锚点 PNG")
     parser.add_argument("--out-dir", type=Path, default=DEFAULT_RAW_DIR, help="原始输出根目录 (默认: art_source/raw)")
     parser.add_argument("--ledger", type=Path, default=DEFAULT_LEDGER_CSV, help="花费台账 CSV 路径")
+    parser.add_argument("--dotenv", action="store_true", help="在内存中加载根目录 .env 授权配置 (绝不回显密钥)")
+    parser.add_argument("--dotenv-path", type=Path, default=DEFAULT_DOTENV_PATH, help="自定义 .env 路径 (默认: 根目录 .env)")
     parser.add_argument("--dry-run", action="store_true", help="强制进入零网络零费用 dry-run 模式")
     parser.add_argument("--force-retry", action="store_true", help="经项目负责人批准后突破单资产 3 次调用上限")
     return parser
@@ -585,6 +650,8 @@ def main(argv: list[str] | None = None) -> int:
                 ledger_csv=args.ledger,
                 explicit_dry_run=args.dry_run,
                 force_retry=args.force_retry,
+                use_dotenv=args.dotenv,
+                dotenv_path=args.dotenv_path,
             )
             if rc != 0:
                 return rc
@@ -616,6 +683,8 @@ def main(argv: list[str] | None = None) -> int:
         ledger_csv=args.ledger,
         explicit_dry_run=args.dry_run,
         force_retry=args.force_retry,
+        use_dotenv=args.dotenv,
+        dotenv_path=args.dotenv_path,
     )
 
 

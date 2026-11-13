@@ -136,3 +136,18 @@
 5. **小窗示意缺少右侧的 2 张排队卡**。布局以 03 号文件 §02.1 为准。
 
 **用途**：只作为风格方向参考，**不能**作为 Image 1 锚点。锚点图按 WP-A3 的流程单独生成。
+
+---
+
+## [V-03] OpenAI API 生成物商用所有权与条款快照核实报告
+
+- **实测状态**：✅ **已通过验证（Canonical 实况 · 2026-11-13 归档）**
+- **官方条款来源**：
+  - OpenAI Terms of Use（`https://openai.com/policies/terms-of-use/`，Section *"Content → Ownership of content"*）
+  - OpenAI Business Terms / API Services（`https://openai.com/policies/business-terms/`，Section *"3.1 Customer Content"*）
+- **核心原文摘录（Verbatim）**：
+  > *"As between you and OpenAI, and to the extent permitted by applicable law, you (a) retain your ownership rights in Input and (b) own the Output. We hereby assign to you all our right, title, and interest, if any, in and to Output."*
+- **合规结论与工程约束**：
+  1. **商用发行权**：通过用户自有 API Key 调用 `api.openai.com/v1/images`（`gpt-image-2.6-flare` / `gpt-image-2.6-sunburst`）产出的图像，OpenAI 已将全部权利、所有权与权益转让给调用方，可用于商业游戏内置与 Steam 发行，且无强制署名义务（`attribution_required = N`）。
+  2. **提示词合规防线**：`art_source/prompts/*.yaml` 严格禁止写入任何在世艺术家姓名、受版权保护的第三方游戏/影视角色或注册商标符号。
+  3. **凭证落盘**：快照已归档至 [`art_source/licenses/proofs/openai_terms_2026.txt`](../art_source/licenses/proofs/openai_terms_2026.txt)，并同步更新 [`art_source/licenses/LICENSES.csv`](../art_source/licenses/LICENSES.csv) 中的 `LIC-OPENAI-01` 台账条目。

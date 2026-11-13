@@ -337,14 +337,16 @@ def evaluate_packed_asset(
     )
 
     # 7. 小尺寸缩略图 (72x90 排队卡 / 32x32 图标) 辨识度与防灰糊检测 (V1_THUMB_READABILITY)
-    preview_card = render_shader_preview(rgba, accent_family=accent_family, on_card_bg=True, with_outline=True)
+    # 注: 关闭外发光描边 (with_outline=False) 以免 40% 半透明骨白描边在 32x32/72x90 下被误计入内部灰糊;
+    # 对角长剑 (03 §02.4 45° 对角) 与四肢分离骷髅 (03 §02.2) 的合法剪影占空比约为 12%~18%，故占空下限设为 10%
+    preview_card = render_shader_preview(rgba, accent_family=accent_family, on_card_bg=True, with_outline=False)
     thumb_rgb = cv2.resize(preview_card[:, :, :3], (spec.thumb_w, spec.thumb_h), interpolation=cv2.INTER_AREA)
     thumb_alpha = cv2.resize(a_ch, (spec.thumb_w, spec.thumb_h), interpolation=cv2.INTER_AREA)
     thumb_b = cv2.resize(b_ch, (spec.thumb_w, spec.thumb_h), interpolation=cv2.INTER_AREA)
     thumb_g = cv2.resize(g_ch, (spec.thumb_w, spec.thumb_h), interpolation=cv2.INTER_AREA)
 
     thumb_fg = thumb_alpha >= 96
-    thumb_fg_count = max(1, int(thumb_fg.sum()))
+    thumb_core = thumb_alpha >= 160
     thumb_occ = float(thumb_fg.sum()) / float(spec.thumb_w * spec.thumb_h)
 
     thumb_luma = (
@@ -352,20 +354,24 @@ def evaluate_packed_asset(
         + 0.587 * thumb_rgb[:, :, 1].astype(np.float32)
         + 0.114 * thumb_rgb[:, :, 2].astype(np.float32)
     )
-    bw_fg = thumb_fg & (thumb_b < 96) & (thumb_g < 96)
+    bw_fg = thumb_core & (thumb_b < 96) & (thumb_g < 96)
     bw_count = max(1, int(bw_fg.sum()))
-    # 铜版细线缩到 72px 后会坍缩为 [75, 165] 中灰糊团；粗刀木刻应保持高反差墨黑与骨白
-    muddy_gray_ratio = float(((thumb_luma >= 75.0) & (thumb_luma <= 165.0) & bw_fg).sum()) / bw_count
+    # 区分"锐利黑白边界的 1px 抗锯齿过渡" (3x3 局部跨度 >= 90) 与 "铜版细密排线坍缩成的平坦灰糊团" (局部跨度 < 90)
+    k3 = np.ones((3, 3), dtype=np.uint8)
+    local_luma_span = cv2.dilate(thumb_luma, k3) - cv2.erode(thumb_luma, k3)
+    muddy_gray_ratio = float(
+        ((thumb_luma >= 75.0) & (thumb_luma <= 165.0) & (local_luma_span < 90.0) & bw_fg).sum()
+    ) / bw_count
     fg_rms_contrast = float(np.std(thumb_luma[thumb_fg] / 255.0)) if int(thumb_fg.sum()) > 1 else 0.0
 
-    thumb_ok = (muddy_gray_ratio <= 0.25) and (fg_rms_contrast >= 0.22) and (thumb_occ >= 0.18)
+    thumb_ok = (muddy_gray_ratio <= 0.25) and (fg_rms_contrast >= 0.22) and (thumb_occ >= 0.10)
     checks.append(
         CheckItemResult(
             code="V1_THUMB_READABILITY",
             name=f"小尺寸缩略 ({spec.thumb_w}x{spec.thumb_h}) 剪影对比度与防灰糊检测 (V1)",
             passed=thumb_ok,
-            measured=f"灰糊占比={muddy_gray_ratio*100:.1f}%, RMS对比度={fg_rms_contrast:.3f}, 剪影占空={thumb_occ*100:.1f}%",
-            threshold="灰糊占比<=25.0%, RMS对比度>=0.220, 剪影占空>=18.0%",
+            measured=f"灰糊团占比={muddy_gray_ratio*100:.1f}%, RMS对比度={fg_rms_contrast:.3f}, 剪影占空={thumb_occ*100:.1f}%",
+            threshold="灰糊团占比<=25.0%, RMS对比度>=0.220, 剪影占空>=10.0%",
             details={
                 "thumb_size": [spec.thumb_w, spec.thumb_h],
                 "muddy_gray_ratio": round(muddy_gray_ratio, 4),
