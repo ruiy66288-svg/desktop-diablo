@@ -1,0 +1,40 @@
+# 《桌面破坏神》WP-A4 正式资产提示词卡 #9: 装备底材图标 — 沉铁胫甲战靴 (靴子槽 boots)
+# 依据: docs/03 §02.4 | docs/04 §3 & §4.1 | docs/verification_log.md [风格方向板 v1] 纠偏 1–5
+asset_id: eq_boots_base_greaves
+target_export_name: eq_boots_base_greaves_v01.png
+category: icon
+slot: boots
+accent_family: abyss
+accent_hex: "#6A1B3A"
+gilding_hex: "#C9A04E"
+default_mode: anchor
+model: gpt-image-2.6-flare
+quality: high
+size: "1024x1024"
+master_output_size: "96x96"
+view_rule: "pair of boots staggered front-and-back, three-quarter (3/4) side view"
+wealth_motif: "small geometric gold-leaf padlock ankle buckles on the iron straps"
+rejection_history:
+  - file: "art_source/rejected/eq_boots_base_greaves/gen_01_7fdf8a9ac6c88f50_R-MASS.png"
+    codes: ["R-MASS"]
+    reason: "Gen-01 ink black was 50.46% (0.46% over the 50.0% icon cap) due to dense comb-teeth hatching along both shin edges and wide solid-black ankle straps."
+    fix: "Eliminated comb-teeth edge ticks on the shin plates and used clean solid warm bone-white iron plates and bone-white ankle bands (~64% bone-white) so ink-black stays cleanly around 35%-43%."
+
+subject_prompt: >-
+  Square 1:1 icon composition. A pair of heavy medieval forged-iron greaves and armored sabaton war-boots base
+  items, arranged staggered slightly front-and-back in a three-quarter (3/4) side view with armored toes
+  pointing toward the lower-right, centered as a tight unified silhouette with generous empty medium gray
+  margin on all four sides (occupying about 80% of the square frame, never touching any edge, zero floor line).
+  Very bright bone-white-dominant coarse woodcut icon: at least 62% to 66% of the boots' interior is wide,
+  clean, solid unshaded warm bone-white lit iron plates across the knee guards, broad shin greaves, ankle
+  straps, instep lames, and steel toe caps of both boots (leave the shin plates completely clean solid
+  bone-white with ZERO comb-teeth tick marks along the plate edges!), balanced against bold closed deep
+  ink-black outer contours, black sole treads, and only 3 sparse bold shadow cuts on the back heel (~34% to
+  42% total black ink). Wealth motif: small geometric gold-leaf padlock buckles on the ankle straps (~4% area),
+  paired with distinct muted deep burgundy-crimson diamond inlays on the knee guards (~3% area).
+
+hard_constraints: >-
+  Completely flat, uniform medium gray (#808080) background with nothing else—strictly NO ground line, NO floor
+  shadow, NO icon frame, NO border, NO bone-white paper backdrop. Keep solid warm bone-white armor plates wide
+  and dominant (~64% bone-white vs ~34% ink-black)—strictly NO dense comb-teeth tick hatching along the shin
+  plate borders and NO gray midtone shading. Strictly ZERO text, letters, runes, or symbols.

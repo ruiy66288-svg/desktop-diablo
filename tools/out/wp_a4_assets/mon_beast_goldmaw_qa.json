@@ -1,0 +1,107 @@
+{
+  "tool": "qa_report.py@1.1.0",
+  "generated_at": "2026-11-13T04:11:18.971772+00:00",
+  "packed_path": "tools\\out\\wp_a4_assets\\mon_beast_goldmaw_packed.png",
+  "packed_sha256": "0fb673c04a70269b151e017630899667610303144086bdeb44ceda6b0d29d94c",
+  "raw_path": "art_source\\raw\\mon_beast_goldmaw\\gen_2995e3dcf112ae9d.png",
+  "raw_sha256": "a43c9c0a96953458df741651809fa558015d98b2e2900c9941720d087665e56c",
+  "category": "monster",
+  "accent_family": "beast",
+  "qa_status": "PASS",
+  "passed_count": 7,
+  "total_checks": 7,
+  "checks": [
+    {
+      "code": "DIM",
+      "name": "母版尺寸与 RGBA 四通道无损格式",
+      "passed": true,
+      "measured": "352x440 (RGBA)",
+      "threshold": "352x440 (RGBA)",
+      "details": {
+        "width": 352,
+        "height": 440,
+        "mode": "RGBA"
+      }
+    },
+    {
+      "code": "ALPHA_CLEAN",
+      "name": "透明边缘净度与零孤立杂点",
+      "passed": true,
+      "measured": "边界残留=0.00%, 半透明边=3.4%, 杂点=0",
+      "threshold": "边界残留<=2.0%, 半透明边<=22.0%, 杂点=0",
+      "details": {
+        "border_opaque_ratio": 0.0,
+        "semi_transparent_edge_ratio": 0.0339,
+        "tiny_specks_count": 0
+      }
+    },
+    {
+      "code": "V2_CHANNEL_CAPS",
+      "name": "四通道正交分离与点缀/镀金面积上限",
+      "passed": true,
+      "measured": "G点缀=0.14%, B镀金=6.44%, 通道混叠=0.00%",
+      "threshold": "G<=6.0%, B<=12.0%, 混叠<=1.0%",
+      "details": {
+        "r_bone_ratio": 0.4511,
+        "g_accent_ratio": 0.0014,
+        "b_gold_ratio": 0.0644,
+        "channel_overlap_ratio": 0.0
+      }
+    },
+    {
+      "code": "V4_INK_MASS",
+      "name": "主体内部墨黑面积占比 (V4)",
+      "passed": true,
+      "measured": "48.32%",
+      "threshold": "35% ~ 55%",
+      "details": {
+        "ink_ratio": 0.4832
+      }
+    },
+    {
+      "code": "V3_LINE_WIDTH",
+      "name": "显示尺寸墨线宽度与防铜版细线检测 (V3)",
+      "passed": true,
+      "measured": "<1.5px细线占比=0.00%, 中位线宽=2.00px (@176x220)",
+      "threshold": "<1.5px细线占比 <= 15.0%",
+      "details": {
+        "display_size": [
+          176,
+          220
+        ],
+        "thin_line_lt_1_5px_ratio": 0.0,
+        "median_stroke_width_px": 2.0
+      }
+    },
+    {
+      "code": "V5_COMPOSITION",
+      "name": "主体占比、居中公差与脚底基准线 (V5)",
+      "passed": true,
+      "measured": "高占比=85.9%, 水平偏移=0.0%, 脚底线=92.0%",
+      "threshold": "高占比 82%~90%, 水平偏移<=4%, 脚底线 88%~96%",
+      "details": {
+        "width_ratio": 0.733,
+        "height_ratio": 0.8591,
+        "center_x_offset": 0.0,
+        "center_y_offset": 0.0091,
+        "foot_line_ratio": 0.9205
+      }
+    },
+    {
+      "code": "V1_THUMB_READABILITY",
+      "name": "小尺寸缩略 (72x90) 剪影对比度与防灰糊检测 (V1)",
+      "passed": true,
+      "measured": "灰糊团占比=0.7%, RMS对比度=0.315, 剪影占空=38.9%",
+      "threshold": "灰糊团占比<=25.0%, RMS对比度>=0.220, 剪影占空>=10.0%",
+      "details": {
+        "thumb_size": [
+          72,
+          90
+        ],
+        "muddy_gray_ratio": 0.0067,
+        "rms_contrast": 0.3147,
+        "silhouette_occupancy": 0.3886
+      }
+    }
+  ]
+}

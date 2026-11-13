@@ -1,0 +1,39 @@
+# 《桌面破坏神》WP-A4 正式资产提示词卡 #6: 普通怪物 — 吞金兽 (野兽族)
+# 依据: docs/03 §02.2 | docs/04 §1.1 & §4.1 | docs/verification_log.md [风格方向板 v1] 纠偏 1–5
+asset_id: mon_beast_goldmaw
+target_export_name: mon_beast_goldmaw_v01.png
+category: monster
+family: beast
+accent_family: beast
+accent_hex: "#4E7A3A"
+gilding_hex: "#C9A04E"
+default_mode: anchor
+model: gpt-image-2.6-flare
+quality: high
+size: "1024x1536"
+master_output_size: "352x440"
+dominant_silhouette_feature: "massive upward-curved solid gold-bar tusks (single dominant silhouette feature)"
+wealth_motif: "solid gold-bar tusks and a split belly maw spilling stacked blank gold coin discs"
+
+subject_prompt: >-
+  Vertical portrait composition for a 4:5 master ratio. A single hulking bipedal boar-hound glutton beast of
+  the Beast family standing front-facing in an iconic symmetrical tarot stance, full body completely visible
+  from heavy brow to clawed paws with generous empty flat medium gray (#808080) margin on all four sides (never
+  cropped at top, bottom, or sides; hind paws floating cleanly in mid-air with zero ground strip beneath them).
+  Bowed muscular forelimbs and thick hind legs are clearly separated from the barrel torso with open gray
+  negative space so the silhouette reads cleanly at 72x90 pixel scale. One dominant silhouette feature only: a
+  pair of massive thick upward-curved tusks shaped like faceted solid gold bullion bars jutting from the lower
+  jaw (no horns, no wings, no cape). Bright bone-white-dominant relief woodcut: about 54% to 60% of the beast's
+  interior is broad, chunky, clean flat unshaded warm bone-white carved hide plates across the brow, massive
+  shoulders, muscular forearms, rib flanks, and thick thighs (simplify hide into big solid bone-white woodcut
+  blocks with zero fine fur stripes), balanced against bold solid deep ink-black shadow blocks and contours
+  (~38% to 46% total black ink). Wealth corruption motif: the solid gold-bar tusks and a vertical split maw
+  across the belly packed with chunky blank gold coin discs (~7% flat gold-leaf area). One tiny muted
+  moss-green ink accent strictly limited to a small braided collar tag under the chin (~3% area).
+
+hard_constraints: >-
+  Isolated full-body subject floating on a completely flat, uniform medium gray (#808080) background—strictly
+  NO bone-white paper card background, NO card border, NO ground line, NO floor strip, NO coins scattered
+  outside the body. Keep warm bone-white hide blocks wide, chunky, and dominant (~56% bone-white vs ~40%
+  ink-black)—strictly NO fine fur strands, NO dense hatching stripes, and NO gray midtone shading. Strictly
+  ZERO text, letters, numbers, mint marks, runes, or symbols.

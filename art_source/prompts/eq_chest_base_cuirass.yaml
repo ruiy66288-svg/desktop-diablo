@@ -1,0 +1,35 @@
+# 《桌面破坏神》WP-A4 正式资产提示词卡 #7: 装备底材图标 — 断债铁胸甲 (胸甲槽 chest)
+# 依据: docs/03 §02.4 | docs/04 §3 & §4.1 | docs/verification_log.md [风格方向板 v1] 纠偏 1–5
+asset_id: eq_chest_base_cuirass
+target_export_name: eq_chest_base_cuirass_v01.png
+category: icon
+slot: chest
+accent_family: demon
+accent_hex: "#7A0F14"
+gilding_hex: "#C9A04E"
+default_mode: anchor
+model: gpt-image-2.6-flare
+quality: high
+size: "1024x1024"
+master_output_size: "96x96"
+view_rule: "strict front view, horizontal shoulder line, centered"
+wealth_motif: "small geometric gold-leaf padlock clasp at the center of the sternum"
+
+subject_prompt: >-
+  Square 1:1 icon composition. A single heavy medieval forged-iron plate cuirass chest armor base item, shown
+  in a strict symmetrical front view with a strong horizontal pauldrons-and-shoulder line and segmented waist
+  faulds, centered with generous empty medium gray margin on all four sides (occupying about 80% of the square
+  frame, never touching any edge). Bright bone-white-dominant coarse woodcut icon: about 56% to 62% of the
+  cuirass interior is wide, clean, flat unshaded warm bone-white lit iron plates across the broad breastplate,
+  both horizontal shoulder pauldrons, and upper waist lames (leave the lit bone-white armor plates wide and
+  solid white without dense black stripes), balanced against a bold closed deep ink-black outer contour, dark
+  neck/armhole recesses, and 4 or 5 sparse thick horizontal parallel woodcut chisel shadow gouges along the
+  lower-right side (~36% to 44% total black ink). Wealth motif: a small geometric gold-leaf padlock clasp on
+  the center sternum ridge (~4% area), paired with one tiny muted crimson-ink gorget gem rivet at the collar
+  (~2% area).
+
+hard_constraints: >-
+  Completely flat, uniform medium gray (#808080) background with nothing else—strictly NO icon frame, NO
+  border, NO mannequin stand, NO bone-white paper backdrop, NO glow. Keep warm bone-white armor plates wide,
+  clean, and dominant (~60% bone-white vs ~40% ink-black)—do NOT fill the chestplate with dense black stripes,
+  and NO gray midtone shading. Strictly ZERO heraldic crests, text, letters, runes, or symbols.

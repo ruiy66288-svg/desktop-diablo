@@ -1,0 +1,40 @@
+# 《桌面破坏神》WP-A4 正式资产提示词卡 #5: 普通怪物 — 债魔 (恶魔族)
+# 依据: docs/03 §02.2 | docs/04 §1.1 & §4.1 | docs/verification_log.md [风格方向板 v1] 纠偏 1–5
+asset_id: mon_demon_debtor
+target_export_name: mon_demon_debtor_v01.png
+category: monster
+family: demon
+accent_family: demon
+accent_hex: "#7A0F14"
+gilding_hex: "#C9A04E"
+default_mode: anchor
+model: gpt-image-2.6-flare
+quality: high
+size: "1024x1536"
+master_output_size: "352x440"
+dominant_silhouette_feature: "tall upward-swept demon horns (single dominant silhouette feature)"
+wealth_motif: "padlocked gold debt chains draped from wrists and chest, plus a blank wax-sealed contract scroll"
+
+subject_prompt: >-
+  Vertical portrait composition for a 4:5 master ratio. A single gaunt debt-collector fiend of the Demon
+  family standing front-facing in an iconic symmetrical tarot pose, full body completely visible from horn
+  tips down to cloven hooves with generous empty flat medium gray (#808080) margin on all four sides (never
+  cropped at top, bottom, or sides; hooves floating cleanly in mid-air with zero ground strip beneath them).
+  Arms and legs are clearly separated from the lean torso with open gray negative space between limbs so the
+  silhouette reads cleanly at 72x90 pixel scale. One dominant silhouette feature only: a pair of tall
+  upward-swept goat-demon horns (no wings, no tail breaking the silhouette, no wide cloak). Bright
+  bone-white-dominant relief woodcut: about 55% to 60% of the figure's interior is wide, clean, flat unshaded
+  warm bone-white carved surfaces across the horns, skull-like fiend face, broad chest, forearms, thighs,
+  shin greaves, and rolled parchment scroll (leave lit bone-white planes clean and solid white without dense
+  black hatching stripes), balanced against crisp deep ink-black contours and selective bold black shadow
+  recesses (~38% to 46% total black ink). Wealth corruption motif: heavy gold-leaf padlocked debt chains
+  shackled to wrist cuffs and a tightly rolled blank contract scroll sealed with a plain round gold wax disc
+  at the hip (~6% gold-leaf area). One tiny muted dark blood-crimson ink accent strictly limited to a small
+  torn loincloth sash knot (~3% area).
+
+hard_constraints: >-
+  Isolated full-body subject floating on a completely flat, uniform medium gray (#808080) background—strictly
+  NO bone-white paper card background, NO tarot card border, NO archway, NO ground line, NO floor strip, NO
+  drop shadow. Keep warm bone-white planes wide and dominant (~58% bone-white vs ~40% ink-black) with ZERO
+  gray midtone fills inside the character and ZERO fine copperplate hatching. The rolled scroll and wax seal
+  must be 100% blank geometric shapes with ZERO text, letters, numbers, runes, ruled lines, or symbols.

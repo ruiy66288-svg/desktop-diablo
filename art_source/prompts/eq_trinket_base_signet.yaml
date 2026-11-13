@@ -1,0 +1,35 @@
+# 《桌面破坏神》WP-A4 正式资产提示词卡 #10: 装备底材图标 — 债契骨铁印戒 (饰品槽 trinket)
+# 依据: docs/03 §02.4 | docs/04 §3 & §4.1 | docs/verification_log.md [风格方向板 v1] 纠偏 1–5
+asset_id: eq_trinket_base_signet
+target_export_name: eq_trinket_base_signet_v01.png
+category: icon
+slot: trinket
+accent_family: abyss
+accent_hex: "#6A1B3A"
+gilding_hex: "#C9A04E"
+default_mode: anchor
+model: gpt-image-2.6-flare
+quality: high
+size: "1024x1024"
+master_output_size: "96x96"
+view_rule: "top-down three-quarter (3/4) perspective view, faceted gem centered in the bezel"
+wealth_motif: "gold-leaf four-prong coin-bezel setting holding the center gem on a heavy carved iron-and-bone band"
+
+subject_prompt: >-
+  Square 1:1 icon composition. A single heavy medieval debt-covenant signet ring trinket base item, shown in an
+  elevated top-down three-quarter (3/4) view with a wide octagonal flat signet bezel facing upward and a thick
+  chunky carved bone-and-iron ring band looping below, centered with generous empty medium gray margin on all
+  four sides (occupying about 78% of the square frame, never touching any edge). Bright bone-white-dominant
+  coarse woodcut icon: about 55% to 60% of the ring's opaque area is wide, clean, flat unshaded warm bone-white
+  carved surfaces across the broad octagonal signet top plate and thick ring shoulders (leave lit bone-white
+  planes clean and solid white without dense stripes), balanced against a bold closed deep ink-black outer
+  contour, dark inner ring hole shadow bevel, and 3 or 4 thick parallel chisel cuts (~36% to 44% total black
+  ink). Wealth motif: a neat geometric gold-leaf four-claw coin-notched inner collar directly framing the
+  center stone (~5% area—the main band is warm bone-white, NOT gold). Centered in the bezel is a chunky
+  flat-cut deep burgundy-ink gemstone (~5% area, no sparkle rays).
+
+hard_constraints: >-
+  Completely flat, uniform medium gray (#808080) background with nothing else—strictly NO jewelry box, NO chain,
+  NO ground shadow, NO icon border, NO starburst or glint rays. Keep warm bone-white wide and dominant (~58%
+  bone-white vs ~38% ink-black), keep gold strictly to the small inner claw collar (<8%), and NO gray midtone
+  shading inside the ring. Strictly ZERO text, letters, runes, or engraved symbols.
