@@ -7,6 +7,7 @@ class_name ReturnReportModal extends PanelContainer
 ## 3. 严格遵守「镀金债契 · 骨白版画」HEX 色板与 360×480 紧凑布局
 
 const ThemePaletteScript = preload("res://ui/ThemePalette.gd")
+const ArtRegistryScript = preload("res://ui/ArtRegistry.gd")
 const NumScript = preload("res://core/num/Num.gd")
 
 signal closed()
@@ -84,6 +85,7 @@ func _build_ui() -> void:
 	var ledger_img: Texture2D = _load_ledger_texture()
 	if ledger_img != null:
 		_tex_ledger.texture = ledger_img
+	_tex_ledger.material = ArtRegistryScript.make_palette_material(ThemePaletteScript.color_old_gold_bright(), false, 1.0)
 	illu_hbox.add_child(_tex_ledger)
 
 	_lbl_overview = Label.new()
@@ -211,10 +213,4 @@ func _format_duration(seconds: float) -> String:
 	return "%d 小时 %d 分" % [hours, rem_mins]
 
 func _load_ledger_texture() -> Texture2D:
-	var path: String = "res://assets/art/items/prop_wealth_ledger_v01.png"
-	var global_p: String = ProjectSettings.globalize_path(path)
-	if FileAccess.file_exists(path) or FileAccess.file_exists(global_p):
-		var img: Image = Image.load_from_file(global_p if FileAccess.file_exists(global_p) else path)
-		if img != null and not img.is_empty():
-			return ImageTexture.create_from_image(img)
-	return null
+	return ArtRegistryScript.get_wealth_ledger_texture()
