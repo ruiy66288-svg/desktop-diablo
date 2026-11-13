@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SetDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://simulation/collection/SetDef.gd" id="1_set"]
+
+[resource]
+script = ExtResource("1_set")
+id = "set_thunder_debt"
+name_zh = "雷霆断债套"
+desc = "同时穿戴「连锁闪电」与「多段打击」：暴击伤害倍率 +1.0x，加法区 +50%"
+required_affix_ids = Array[String](["chain_lightning", "multi_strike"])
+bonus_stats = {
+"additive_percent": 0.5,
+"crit_mult": 1.0
+}
+vfx_hint = "thunder_aura"

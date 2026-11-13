@@ -153,6 +153,15 @@ func apply_command(cmd: CommandScript, state: RefCounted, event_queue: EventQueu
 			state.call("ack_signal", int(cmd.payload.get("kind", -1)))
 			return true
 
+		CommandScript.Type.SUMMON_RARE_BOSS:
+			return bool(state.call("summon_rare_boss"))
+
+		CommandScript.Type.ABORT_RARE_BOSS:
+			return bool(state.call("abort_rare_boss"))
+
+		CommandScript.Type.SET_TRANSMOG:
+			return bool(state.call("set_transmog", String(cmd.payload.get("slot", "")), String(cmd.payload.get("appearance_id", ""))))
+
 	return false
 
 func clone() -> CommandQueue:

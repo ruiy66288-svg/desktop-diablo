@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SetDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://simulation/collection/SetDef.gd" id="1_set"]
+
+[resource]
+script = ExtResource("1_set")
+id = "set_greed_covenant"
+name_zh = "贪婪契约套"
+desc = "同时穿戴「金币风暴」与「高利贷护印」：加法区 +100%，吞金减免 +50%"
+required_affix_ids = Array[String](["gold_storm", "usurer_ward"])
+bonus_stats = {
+"additive_percent": 1.0,
+"gold_eat_reduction": 0.5
+}
+vfx_hint = "gold_covenant"

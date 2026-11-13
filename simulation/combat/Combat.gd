@@ -14,6 +14,8 @@ const SmelterScript = preload("res://simulation/loot/Smelter.gd")
 const ItemInstanceScript = preload("res://simulation/loot/ItemInstance.gd")
 const BandRulesScript = preload("res://simulation/mechanics/BandRules.gd")
 const MechanicDefScript = preload("res://simulation/mechanics/MechanicDef.gd")
+const SignatureAffixesScript = preload("res://simulation/affix/SignatureAffixes.gd")
+const AffixDefScript = preload("res://simulation/affix/AffixDef.gd")
 const BalanceScript = preload("res://simulation/Balance.gd")
 const NumScript = preload("res://core/num/Num.gd")
 
@@ -41,7 +43,12 @@ func step_tick(dt: float, state: SimStateScript, queue: EventQueueScript) -> int
 		_apply_gold_eat(tick_dt, float(strengths[KIND_GOLD_EAT]), state)
 
 	# 2. Boss 15 秒限时判定 (Q3 & 勘误 E3：超时失败只回退 farm_stage，绝不修改 current_stage)
-	if state.is_boss:
+	if state.is_rare_boss_active:
+		state.rare_boss_timer += tick_dt
+		if state.rare_boss_timer >= bal.rare_boss_time_limit:
+			state.abort_rare_boss()
+			return 0
+	elif state.is_boss:
 		state.boss_timer += tick_dt
 		if state.boss_timer >= bal.boss_time_limit:
 			state.last_fail_margin_log = state.get_boss_power_margin_log(state.current_stage)
@@ -64,6 +71,10 @@ func step_tick(dt: float, state: SimStateScript, queue: EventQueueScript) -> int
 		eff_dt -= consumed
 		if eff_dt <= STUN_EPS:
 			return 0
+
+	# 2.6 稀有 Boss 召唤符文判定 (按模拟时间 60.0s 判定，仅在 run_best >= 100 且非稀有 Boss 期间)
+	if not state.is_rare_boss_active and state.collection_roller != null:
+		state.collection_roller.check_summon_rune_tick(eff_dt, state.run_best, state.rng.loot, bal, state.codex)
 
 	# 3. 攻速充能与本 tick 攻击次数计算（读取 Balance 参数，零硬编码）
 	var speed_bonus: float = state.buffs.get_stat_bonus("atk_speed_pct") if state.buffs != null else 0.0
@@ -266,7 +277,11 @@ func _apply_hit_damage(
 					instant_rate_log + NumScript.from_float(bal.mech_income_ema_new)
 				)
 
-			if killed_was_boss:
+			if state.is_rare_boss_active:
+				state.boss_fail_streak = 0
+				queue.push_back(SimEventScript.new(SimEventScript.T.BOSS_KILL, killed_max_hp))
+				_handle_rare_boss_clear(state, queue)
+			elif killed_was_boss:
 				state.boss_fail_streak = 0
 				state.farm_kills_since_retreat = 0
 				queue.push_back(SimEventScript.new(SimEventScript.T.BOSS_KILL, killed_max_hp))
@@ -303,3 +318,38 @@ func _handle_boss_stage_clear(state: SimStateScript, queue: EventQueueScript) ->
 			return
 
 	state.advance_to_next_stage(queue)
+
+func _handle_rare_boss_clear(state: SimStateScript, queue: EventQueueScript) -> void:
+	var bal: BalanceScript = state.balance
+	var item: ItemInstanceScript = ItemInstanceScript.new(
+		state.rng.loot.next_u32(),
+		"雷霆之刃",
+		ItemInstanceScript.Slot.WEAPON,
+		ItemInstanceScript.Rarity.UNIQUE,
+		state.current_stage,
+		bal.get_equip_flat_atk_log(state.current_stage, bal.eq_phi_max),
+		bal.unique_mult_max,
+		bal.unique_mult_max,
+		bal
+	)
+	var affix: AffixDefScript = SignatureAffixesScript.get_by_id("chain_lightning")
+	if affix != null:
+		item.affixes.push_back(affix)
+
+	if state.filter.should_keep(item):
+		state.inventory.add_item(item, state, queue)
+		state.note_item_kept(item, queue)
+	else:
+		SmelterScript.smelt_item(item, state, queue)
+
+	if state.codex != null:
+		state.codex.unlock_monster("boss_rare_archon")
+		state.codex.unlock_unique("thunder_blade")
+		state.codex.unlock_cosmetic("transmog_archon_blade")
+
+	state.is_rare_boss_active = false
+	state.rare_boss_timer = 0.0
+	state.current_stage = state.saved_regular_stage
+	state.farm_stage = state.saved_regular_stage
+	state.mobs_killed_in_stage = 0
+	SpawnerScript.spawn_next(state)

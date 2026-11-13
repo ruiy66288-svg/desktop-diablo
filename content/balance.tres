@@ -123,3 +123,11 @@ toll_saving_lead_stages = 5 ; 来源: 02号文件 §7.3 & Q36 (门前 5 层以�
 dry_run_seconds = 30.0 ; 来源: 02号文件 §0 Q14 (克隆 Sim 干跑 30 秒)
 dry_run_default_seed = 987654321 ; 来源: 02号文件 §2.1 (干跑默认确定性种子)
 dry_run_display_cap_log = 5.0 ; 来源: 02号文件 §0 Q14 (Δ% 展示上限 10^5)
+; --- 11. 阶段 2 收藏、图鉴、隐藏套装与稀有 Boss (来源: 02号文件 §8.1–§8.3 & Q33–Q34) ---
+codex_gold_bonus_per_entry = 0.005 ; 来源: 02号文件 §8.3 & Q34 (每点亮 1 项图鉴金币 +0.5%)
+mythic_base_chance = 0.0005 ; 来源: 02号文件 §8.1 (神话暗金变体基准概率 1/2000)
+primal_transmog_chance = 0.02 ; 来源: 02号文件 §8.1 (太古独特外观判定基准概率 1/50)
+summon_rune_base_chance = 0.00035 ; 来源: 02号文件 §8.1 (召唤符文每模拟分钟基准概率)
+bad_luck_mult = 1.02 ; 来源: 02号文件 §8.1 (坏运气保护乘数 1.02)
+rare_boss_time_limit = 30.0 ; 来源: 02号文件 §8.2 (稀有 Boss 挑战限时 30 秒)
+rare_boss_hp_mult = 5.0 ; 来源: 02号文件 §8.2 (稀有 Boss 血量倍率 5.0x)

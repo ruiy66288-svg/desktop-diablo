@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="CosmeticDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://simulation/collection/CosmeticDef.gd" id="1_cos"]
+
+[resource]
+script = ExtResource("1_cos")
+id = "skin_kill_starlight"
+name_zh = "群星断灭特效"
+desc = "发现全部隐藏套装后解锁的击杀星芒爆散打击特效"
+slot_target = "skin_kill"
+icon_path = "res://assets/art/items/uniq_weapon_thunder_blade_v01.png"
+vfx_key = "kill_starlight"

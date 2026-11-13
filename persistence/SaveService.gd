@@ -50,6 +50,7 @@ static func _item_to_dict(item: ItemInstanceScript) -> Dictionary:
 		"flat_atk_log": enc_f(item.flat_atk_log),
 		"additive_pct": enc_f(item.additive_pct),
 		"unique_mult": enc_f(item.unique_mult),
+		"is_mythic": item.is_mythic,
 		"bonus_affix_slots": item.bonus_affix_slots,
 		"affix_ids": affix_ids
 	}
@@ -73,6 +74,7 @@ static func _item_from_dict(d: Dictionary, bal: BalanceScript) -> ItemInstanceSc
 		bal
 	)
 	item.bonus_affix_slots = int(d.get("bonus_affix_slots", 0))
+	item.is_mythic = bool(d.get("is_mythic", false))
 	for id_var: Variant in (d.get("affix_ids", []) as Array):
 		var def: AffixDefScript = _resolve_affix(String(id_var))
 		if def != null:

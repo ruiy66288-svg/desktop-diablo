@@ -41,6 +41,7 @@ var ilvl: int = 1
 var flat_atk_log: float = NumScript.ZERO
 var additive_pct: float = 0.0
 var unique_mult: float = 1.0
+var is_mythic: bool = false
 var bonus_affix_slots: int = 0
 var affixes: Array = []
 var score: float = 0.0
@@ -119,6 +120,7 @@ func clone() -> ItemInstance:
 		unique_mult
 	) as ItemInstance
 	copy.bonus_affix_slots = bonus_affix_slots
+	copy.is_mythic = is_mythic
 	copy.affixes = affixes.duplicate()
 	copy.score = score
 	return copy

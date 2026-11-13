@@ -19,16 +19,17 @@ const PERCENT_SCALE: float = 100.0
 static func evaluate_candidate(
 	source_state: SimStateScript,
 	candidate_item: ItemInstanceScript,
-	dry_seed: int = -1
+	dry_seed: int = -1,
+	against_rare_boss: bool = false
 ) -> Dictionary:
 	var bal: BalanceScript = source_state.balance
 	var seed_val: int = dry_seed if dry_seed >= 0 else bal.dry_run_default_seed
 	var dry_ticks: int = maxi(1, int(round(bal.dry_run_seconds / bal.sim_tick_dt)))
 
-	var base_state: SimStateScript = _clone_for_eval(source_state, seed_val)
+	var base_state: SimStateScript = _clone_for_eval(source_state, seed_val, against_rare_boss)
 	var base_dmg_log: float = _run_eval_ticks(base_state, dry_ticks)
 
-	var cand_state: SimStateScript = _clone_for_eval(source_state, seed_val)
+	var cand_state: SimStateScript = _clone_for_eval(source_state, seed_val, against_rare_boss)
 	if candidate_item != null:
 		cand_state.equip_item(candidate_item.clone())
 	var cand_dmg_log: float = _run_eval_ticks(cand_state, dry_ticks)
@@ -53,11 +54,15 @@ static func evaluate_candidate(
 		"delta_log": delta_log
 	}
 
-static func _clone_for_eval(source: SimStateScript, seed_val: int) -> SimStateScript:
+static func _clone_for_eval(source: SimStateScript, seed_val: int, against_rare_boss: bool = false) -> SimStateScript:
 	var cloned: SimStateScript = source.clone()
 	cloned.command_queue.clear()
 	cloned.rng.set_seed(seed_val)
-	SpawnerScript.spawn_next(cloned)
+	if against_rare_boss:
+		cloned.is_rare_boss_active = true
+		SpawnerScript.spawn_rare_boss(cloned)
+	else:
+		SpawnerScript.spawn_next(cloned)
 	return cloned
 
 static func _run_eval_ticks(state: SimStateScript, ticks: int) -> float:

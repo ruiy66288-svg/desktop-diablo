@@ -19,7 +19,10 @@ enum Type {
 	SETTLE_RESEARCH,       # 按 Unix 时间戳结算到期研究 (离线重开同样使用): payload {"now_unix": int}
 	EQUIP_VAULT_POWER,     # 将已解锁的永久威能装配进威能槽: payload {"affix_id": String}
 	UNEQUIP_VAULT_POWER,   # 卸下威能槽中的永久威能: payload {"affix_id": String}
-	ACK_SIGNAL            # 确认并消除边缘光带信号: payload {"kind": int}
+	ACK_SIGNAL,            # 确认并消除边缘光带信号: payload {"kind": int}
+	SUMMON_RARE_BOSS,      # 消耗 1 枚符文开启稀有 Boss「契约大执政官」独立挑战房: payload {}
+	ABORT_RARE_BOSS,       # 主动撤退稀有 Boss 挑战（零损失返还符文）: payload {}
+	SET_TRANSMOG           # 设置 6 槽装备幻化外观: payload {"slot": String, "appearance_id": String}
 }
 
 var type: Type = Type.BUY_ATK_UPGRADE
@@ -74,6 +77,15 @@ static func make_unequip_vault_power(affix_id: String) -> Command:
 
 static func make_ack_signal(kind: int) -> Command:
 	return _create(Type.ACK_SIGNAL, {"kind": kind})
+
+static func make_summon_rare_boss() -> Command:
+	return _create(Type.SUMMON_RARE_BOSS, {})
+
+static func make_abort_rare_boss() -> Command:
+	return _create(Type.ABORT_RARE_BOSS, {})
+
+static func make_set_transmog(slot: String, appearance_id: String) -> Command:
+	return _create(Type.SET_TRANSMOG, {"slot": slot, "appearance_id": appearance_id})
 
 func clone() -> Command:
 	return (get_script() as GDScript).new(type, payload.duplicate()) as Command

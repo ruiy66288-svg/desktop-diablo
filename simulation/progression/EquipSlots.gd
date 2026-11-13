@@ -7,6 +7,8 @@ class_name EquipSlots extends RefCounted
 const ItemInstanceScript = preload("res://simulation/loot/ItemInstance.gd")
 const AffixDefScript = preload("res://simulation/affix/AffixDef.gd")
 const SignatureAffixesScript = preload("res://simulation/affix/SignatureAffixes.gd")
+const SetDetectorScript = preload("res://simulation/collection/SetDetector.gd")
+const CodexScript = preload("res://persistence/Codex.gd")
 
 const SLOT_KEYS: Array[String] = [
 	"weapon",
@@ -47,6 +49,10 @@ func unequip(slot_val: int, state: RefCounted = null) -> ItemInstanceScript:
 	equipped.erase(slot_val)
 
 	if state != null:
+		var state_eq_var: Variant = state.get("equipped")
+		if state_eq_var is Dictionary:
+			var slot_str: String = ItemInstanceScript.get_slot_key(item.slot)
+			(state_eq_var as Dictionary)[slot_str] = null
 		recalculate_and_apply(state)
 
 	return item
@@ -91,6 +97,10 @@ func recalculate_and_apply(state: RefCounted) -> void:
 			var def: AffixDefScript = SignatureAffixesScript.get_by_id(String(vault_list[v_idx]))
 			if def != null:
 				_apply_affix(def, SLOT_KEYS.size() + v_idx, 0, totals, resolver_obj)
+
+	# 隐藏套装检测与加成注入 (§8.1 & §8.4)
+	var codex_ref: CodexScript = (state.get("codex") as CodexScript) if state != null else null
+	SetDetectorScript.apply_set_bonuses(state, totals, codex_ref)
 
 	state.set("passive_totals", totals)
 	if state.has_method("recalculate_stats"):

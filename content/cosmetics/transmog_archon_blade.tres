@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="CosmeticDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://simulation/collection/CosmeticDef.gd" id="1_cos"]
+
+[resource]
+script = ExtResource("1_cos")
+id = "transmog_archon_blade"
+name_zh = "执政官裁决巨刃"
+desc = "击败契约大执政官获得的专属武器幻化外观"
+slot_target = "transmog_weapon"
+icon_path = "res://assets/art/items/uniq_weapon_thunder_blade_v01.png"
+vfx_key = "archon_blade"

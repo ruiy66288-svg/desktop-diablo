@@ -30,6 +30,9 @@ const SignatureAffixesScript = preload("res://simulation/affix/SignatureAffixes.
 const AffixDefScript = preload("res://simulation/affix/AffixDef.gd")
 const BandRulesScript = preload("res://simulation/mechanics/BandRules.gd")
 const MechanicDefScript = preload("res://simulation/mechanics/MechanicDef.gd")
+const CodexScript = preload("res://persistence/Codex.gd")
+const CollectionRollerScript = preload("res://simulation/collection/CollectionRoller.gd")
+const SpawnerScript = preload("res://simulation/combat/Spawner.gd")
 
 const EQUIP_SLOTS: Array[String] = [
 	"weapon",
@@ -135,6 +138,14 @@ var equip_slots: EquipSlotsScript
 var tech: TechTreeScript                 # 科技树（永不随转生重置, Q28）
 var research_queue: ResearchQueueScript   # 研究队列（Unix 时间戳, Q27）
 
+# 6. 图鉴、稀有收藏、幻化与稀有 Boss 状态 (§8.1–§8.3)
+var codex: CodexScript = null
+var collection_roller: CollectionRollerScript
+var transmog_slots: Dictionary = {}
+var is_rare_boss_active: bool = false
+var saved_regular_stage: int = 1
+var rare_boss_timer: float = 0.0
+
 func _init(seed_val: int = 123456789, p_balance: BalanceScript = null) -> void:
 	balance = p_balance if p_balance != null else (BalanceScript.load_default() as BalanceScript)
 	wallet = WalletScript.new()
@@ -151,8 +162,56 @@ func _init(seed_val: int = 123456789, p_balance: BalanceScript = null) -> void:
 	tech = TechTreeScript.new()
 	research_queue = ResearchQueueScript.new()
 	signals = SignalsScript.new()
+	collection_roller = CollectionRollerScript.new()
 	_init_empty_equip_slots()
 	recalculate_stats()
+
+func ensure_codex() -> CodexScript:
+	if codex == null:
+		codex = CodexScript.new()
+	return codex
+
+## 消耗 1 枚符文开启稀有 Boss「契约大执政官」独立挑战房 (§8.2)
+func summon_rare_boss() -> bool:
+	if is_rare_boss_active:
+		return false
+	if codex == null or not codex.consume_summon_rune():
+		return false
+	is_rare_boss_active = true
+	saved_regular_stage = current_stage
+	rare_boss_timer = 0.0
+	SpawnerScript.spawn_rare_boss(self)
+	return true
+
+## 主动撤退稀有 Boss 挑战（零损失返还符文） (Q25 & §8.2)
+func abort_rare_boss() -> bool:
+	if not is_rare_boss_active:
+		return false
+	if codex != null:
+		codex.add_summon_runes(1)
+	is_rare_boss_active = false
+	rare_boss_timer = 0.0
+	current_stage = saved_regular_stage
+	farm_stage = saved_regular_stage
+	mobs_killed_in_stage = 0
+	SpawnerScript.spawn_next(self)
+	return true
+
+## 设置 6 槽装备幻化外观 (§8.3)
+func set_transmog(slot_key: String, appearance_id: String) -> bool:
+	if not EQUIP_SLOTS.has(slot_key):
+		return false
+	if appearance_id.is_empty():
+		transmog_slots.erase(slot_key)
+		return true
+	if codex != null and not codex.cosmetics.has(appearance_id):
+		return false
+	transmog_slots[slot_key] = appearance_id
+	return true
+
+## 获取槽位当前幻化外观 id (无则返回空字符串)
+func get_transmog(slot_key: String) -> String:
+	return String(transmog_slots.get(slot_key, ""))
 
 func _init_empty_equip_slots() -> void:
 	equipped.clear()
@@ -272,6 +331,8 @@ func add_income(amount_log: float, queue: EventQueueScript = null) -> void:
 		return
 
 	var income_bonus_pct: float = tech.get_effect_total("income_mult_pct")
+	if codex != null:
+		income_bonus_pct += codex.get_gold_bonus_pct(balance)
 	var boosted_log: float = amount_log + NumScript.from_float(1.0 + income_bonus_pct) if income_bonus_pct > 0.0 else amount_log
 	var saving_mode: bool = is_saving_for_toll()
 	var tier_before: int = wallet.credit.credit_tier
@@ -503,10 +564,17 @@ func estimate_equip_delta_log(item: ItemInstanceScript) -> float:
 	var cand_dps: float = test_stats.get_expected_dps_log(balance.min_atk_interval)
 	return cand_dps - base_dps
 
-## 新暗金/太古装备入包且估算 DPS 增量 > 0 时触发「强力新装备」信号 (§5.4)
+## 新暗金/太古装备入包且估算 DPS 增量 > 0 时触发「强力新装备」信号 (§5.4 & §8.1 & §8.3)
 func note_item_kept(item: ItemInstanceScript, queue: EventQueueScript = null) -> void:
 	if int(item.rarity) < int(ItemInstanceScript.Rarity.UNIQUE):
 		return
+	if run_best >= balance.abyss_min_stage and collection_roller != null:
+		collection_roller.check_mythic_roll(item, rng.loot, balance)
+		collection_roller.check_primal_transmog_roll(item, rng.loot, balance, codex)
+	if codex != null:
+		for a: Variant in item.affixes:
+			if a is AffixDefScript:
+				codex.unlock_unique((a as AffixDefScript).id, item.is_mythic)
 	if estimate_equip_delta_log(item) > 0.0:
 		raise_signal(SignalsScript.Kind.BETTER_UNIQUE, {
 			"uid": item.uid, "rarity": int(item.rarity), "slot": ItemInstanceScript.get_slot_key(item.slot)
@@ -725,6 +793,8 @@ func get_hash_parts() -> PackedStringArray:
 		parts.append("tech:%s|%s" % [tech.get_signature(), research_queue.get_signature()])
 	if not buffs.is_empty():
 		parts.append("buffs:%s" % buffs.get_signature())
+	if is_rare_boss_active or rare_boss_timer > 0.0:
+		parts.append("rare_boss:%s,%.6f,%d" % [str(is_rare_boss_active), rare_boss_timer, saved_regular_stage])
 	parts.append("inv:%d" % inventory.get_count())
 	for idx: int in range(inventory.get_count()):
 		var inv_item: ItemInstanceScript = inventory.get_item_at(idx)
@@ -783,6 +853,14 @@ func clone() -> SimState:
 	copy.mob_shield_max_log = mob_shield_max_log
 	copy.mob_shield_cur_log = mob_shield_cur_log
 	copy.mob_shield_strip_cap_log = mob_shield_strip_cap_log
+	if codex != null:
+		copy.codex = codex.clone()
+	if collection_roller != null:
+		copy.collection_roller = collection_roller.clone()
+	copy.transmog_slots = transmog_slots.duplicate()
+	copy.is_rare_boss_active = is_rare_boss_active
+	copy.saved_regular_stage = saved_regular_stage
+	copy.rare_boss_timer = rare_boss_timer
 	for slot_key: String in EQUIP_SLOTS:
 		var eq_item: ItemInstanceScript = equipped.get(slot_key, null) as ItemInstanceScript
 		if eq_item != null:

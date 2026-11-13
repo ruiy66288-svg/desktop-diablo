@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SetDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://simulation/collection/SetDef.gd" id="1_set"]
+
+[resource]
+script = ExtResource("1_set")
+id = "set_abyss_execution"
+name_zh = "深渊处刑套"
+desc = "同时穿戴「处刑之锤」与「死斗精准」：暴击率 +15%，暴击伤害倍率 +1.5x"
+required_affix_ids = Array[String](["executioner_hammer", "deadly_precision"])
+bonus_stats = {
+"crit_mult": 1.5,
+"crit_rate": 0.15
+}
+vfx_hint = "execution_blade"
