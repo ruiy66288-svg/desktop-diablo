@@ -22,6 +22,7 @@ const SfxMixerScript = preload("res://presentation/audio/SfxMixer.gd")
 const DryRunScript = preload("res://simulation/commands/DryRun.gd")
 const SignatureAffixesScript = preload("res://simulation/affix/SignatureAffixes.gd")
 const SystemsDrawerScript = preload("res://ui/SystemsDrawer.gd")
+const ArtRegistryScript = preload("res://ui/ArtRegistry.gd")
 
 const WINDOW_WIDTH: float = 360.0
 const WINDOW_HEIGHT: float = 480.0
@@ -37,8 +38,8 @@ const EQUIP_TOP_Y: float = 424.0
 
 const MAIN_CARD_POS: Vector2 = Vector2(24.0, 84.0)
 const MAIN_CARD_SIZE: Vector2 = Vector2(176.0, 220.0)
-const BOSS_CARD_POS: Vector2 = Vector2(76.0, 66.0)
-const BOSS_CARD_SIZE: Vector2 = Vector2(208.0, 256.0)
+const BOSS_CARD_POS: Vector2 = Vector2(76.0, 80.0)
+const BOSS_CARD_SIZE: Vector2 = Vector2(208.0, 242.0)
 const QUEUE_CARD_1_POS: Vector2 = Vector2(252.0, 94.0)
 const QUEUE_CARD_2_POS: Vector2 = Vector2(252.0, 198.0)
 const QUEUE_CARD_SIZE: Vector2 = Vector2(72.0, 90.0)
@@ -87,10 +88,13 @@ var floating_text: FloatingTextLayerScript = null
 var sfx_mixer: SfxMixerScript = null
 
 var _capture_preview_path: String = ""
+var _capture_grayscale_path: String = ""
+var _capture_wealth_composite_path: String = ""
 var _capture_after_sec: float = 0.0
 var _capture_elapsed_sec: float = 0.0
 var _capture_done: bool = false
 var _demo_affix_vfx: bool = false
+var _demo_wp09_v9: bool = false
 var _demo_vfx_fired: bool = false
 
 func _ready() -> void:
@@ -177,7 +181,23 @@ func _process(delta: float) -> void:
 			vfx_manager.spawn_crit_ring(c_pos)
 			vfx_manager.spawn_edge_alert(4)
 
-	if not _capture_done and not _capture_preview_path.is_empty():
+	if _demo_wp09_v9 and not _demo_vfx_fired and vfx_manager != null and main_card != null and loot_fountain != null:
+		var v9_trigger_at: float = maxf(0.1, _capture_after_sec - 0.06) if _capture_after_sec > 0.0 else 0.5
+		if _capture_elapsed_sec >= v9_trigger_at:
+			_demo_vfx_fired = true
+			loot_fountain.spawn_v9_showcase_five_tiers()
+			var mc_pos: Vector2 = main_card.position + main_card.size * 0.5
+			vfx_manager.spawn_crit_ring(mc_pos + Vector2(0.0, -14.0))
+			if floating_text != null:
+				floating_text.add_floating_text("2,480!", Vector2(mc_pos.x + 38.0, BATTLE_TOP_Y + 42.0), ThemePaletteScript.color_crit_core(), true)
+			var demo_rarities: Array[int] = [4, 3, 2, 3, 1, 4]
+			for s_idx: int in range(SimStateScript.EQUIP_SLOTS.size()):
+				var sk: String = SimStateScript.EQUIP_SLOTS[s_idx]
+				var sv: EquipSlotViewScript = equip_slot_views.get(sk, null) as EquipSlotViewScript
+				if sv != null:
+					sv.set_item_state(true, demo_rarities[s_idx], (s_idx + 1) * 12)
+
+	if not _capture_done and (not _capture_preview_path.is_empty() or not _capture_wealth_composite_path.is_empty()):
 		_capture_elapsed_sec += delta
 		if _capture_elapsed_sec >= _capture_after_sec:
 			_capture_done = true
@@ -189,36 +209,121 @@ func _parse_capture_user_args() -> void:
 	for arg: String in user_args:
 		if arg.begins_with("--capture-preview="):
 			_capture_preview_path = arg.trim_prefix("--capture-preview=")
+		elif arg.begins_with("--capture-grayscale="):
+			_capture_grayscale_path = arg.trim_prefix("--capture-grayscale=")
+		elif arg.begins_with("--capture-wealth-composite="):
+			_capture_wealth_composite_path = arg.trim_prefix("--capture-wealth-composite=")
 		elif arg.begins_with("--capture-after-sec="):
 			target_sec = maxf(0.5, float(arg.trim_prefix("--capture-after-sec=")))
 		elif arg == "--demo-affix-vfx":
 			_demo_affix_vfx = true
-	if not _capture_preview_path.is_empty():
+		elif arg == "--demo-wp09-v9":
+			_demo_wp09_v9 = true
+	if not _capture_preview_path.is_empty() or not _capture_wealth_composite_path.is_empty():
 		_capture_after_sec = target_sec
 
 func _capture_viewport_and_quit() -> void:
 	await RenderingServer.frame_post_draw
 	var vp: Viewport = get_viewport()
 	if vp != null and vp.get_texture() != null:
-		var img: Image = vp.get_texture().get_image()
-		if img != null:
-			var err: Error = img.save_png(_capture_preview_path)
-			var state: SimStateScript = game_ref.get_sim_state()
-			var win_pos: Vector2i = desktop_window.get_current_window_position() if desktop_window != null else Vector2i.ZERO
-			var win_sz: Vector2i = DesktopWindowScript.get_active_window_size()
-			print("[WP-07 Preview] Saved=%s err=%d win_pos=%s win_size=%s run_best=%d cur_stage=%d gold=%s W=%s mult=%.2f" % [
-				_capture_preview_path,
-				int(err),
-				str(win_pos),
-				str(win_sz),
-				state.run_best if state != null else 0,
-				state.current_stage if state != null else 0,
-				NumScript.format_num(state.gold) if state != null else "0",
-				state.wallet.format_net_wealth() if state != null else "0",
-				state.get_wealth_hp_multiplier() if state != null else 1.0
-			])
+		if not _capture_preview_path.is_empty():
+			var img: Image = vp.get_texture().get_image()
+			if img != null:
+				var err: Error = img.save_png(_capture_preview_path)
+				if not _capture_grayscale_path.is_empty():
+					var gray_img: Image = _make_grayscale_image(img)
+					gray_img.save_png(_capture_grayscale_path)
+				var state: SimStateScript = game_ref.get_sim_state()
+				var win_pos: Vector2i = desktop_window.get_current_window_position() if desktop_window != null else Vector2i.ZERO
+				var win_sz: Vector2i = DesktopWindowScript.get_active_window_size()
+				print("[WP-07 Preview] Saved=%s err=%d win_pos=%s win_size=%s run_best=%d cur_stage=%d gold=%s W=%s mult=%.2f" % [
+					_capture_preview_path,
+					int(err),
+					str(win_pos),
+					str(win_sz),
+					state.run_best if state != null else 0,
+					state.current_stage if state != null else 0,
+					NumScript.format_num(state.gold) if state != null else "0",
+					state.wallet.format_net_wealth() if state != null else "0",
+					state.get_wealth_hp_multiplier() if state != null else 1.0
+				])
+		if not _capture_wealth_composite_path.is_empty():
+			await _capture_boss_and_wealth_states_composite(vp, _capture_wealth_composite_path)
 	if get_tree() != null:
 		get_tree().quit(0)
+
+static func _make_grayscale_image(src: Image) -> Image:
+	var w: int = src.get_width()
+	var h: int = src.get_height()
+	var dst: Image = Image.create(w, h, false, Image.FORMAT_RGBA8)
+	for y: int in range(h):
+		for x: int in range(w):
+			var c: Color = src.get_pixel(x, y)
+			var lum: float = clampf(0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b, 0.0, 1.0)
+			dst.set_pixel(x, y, Color(lum, lum, lum, c.a))
+	return dst
+
+func _capture_boss_and_wealth_states_composite(vp: Viewport, out_path: String) -> void:
+	if game_ref != null:
+		game_ref.set_auto_tick_enabled(false)
+	set_process(false)
+	if loot_fountain != null:
+		loot_fountain.clear_all()
+	if floating_text != null:
+		floating_text.visible = false
+	if vfx_manager != null:
+		vfx_manager.update_killing_frenzy_afterimage(0, Rect2())
+		vfx_manager.visible = false
+
+	var panels: Array[Image] = []
+	var configs: Array[Dictionary] = [
+		{"boss": true, "delta_h": 0.25, "title": "首领 · 深渊魔主", "wealth_txt": "净资 +12.5K", "mult_txt": "血量 ×1.78"},
+		{"boss": false, "delta_h": 0.4771, "title": "守财亡骸 (囤钱满压)", "wealth_txt": "净资 +99.9M", "mult_txt": "血量 ×3.00"},
+		{"boss": false, "delta_h": 0.0, "title": "守财亡骸 (常态均衡)", "wealth_txt": "净资 0", "mult_txt": "血量 ×1.00"},
+		{"boss": false, "delta_h": -0.3979, "title": "守财亡骸 (负债剥落)", "wealth_txt": "净资 -45.0K", "mult_txt": "血量 ×0.40"}
+	]
+
+	for cfg: Dictionary in configs:
+		var is_b: bool = bool(cfg.get("boss", false))
+		var dh: float = float(cfg.get("delta_h", 0.0))
+		label_mob_name.text = str(cfg.get("title", ""))
+		label_wealth.text = str(cfg.get("wealth_txt", ""))
+		label_pressure.text = str(cfg.get("mult_txt", ""))
+		if is_b:
+			main_card.position = BOSS_CARD_POS
+			main_card.size = BOSS_CARD_SIZE
+			main_card.setup_role(MonsterCardViewScript.CardRole.BOSS_MOB, "深渊魔主")
+			main_card.apply_visual_spec(ArtRegistryScript.get_monster_visual_spec(10, 0, true, false))
+			queue_card_1.visible = false
+			queue_card_2.visible = false
+		else:
+			main_card.position = MAIN_CARD_POS
+			main_card.size = MAIN_CARD_SIZE
+			main_card.setup_role(MonsterCardViewScript.CardRole.MAIN_MOB, "守财亡骸")
+			main_card.apply_visual_spec(ArtRegistryScript.get_monster_visual_spec(0, 0, false, false))
+			queue_card_1.visible = true
+			queue_card_2.visible = true
+			queue_card_1.apply_visual_spec(ArtRegistryScript.get_monster_visual_spec(0, 1, false, false))
+			queue_card_2.apply_visual_spec(ArtRegistryScript.get_monster_visual_spec(0, 2, false, false))
+			queue_card_1.update_combat_visuals(1.0, dh, 0.0)
+			queue_card_2.update_combat_visuals(1.0, dh, 0.0)
+		main_card.update_combat_visuals(0.82, dh, 0.0)
+		await RenderingServer.frame_post_draw
+		await RenderingServer.frame_post_draw
+		var snap: Image = vp.get_texture().get_image()
+		if snap != null:
+			panels.push_back(snap)
+
+	if panels.size() == 4:
+		var pw: int = panels[0].get_width()
+		var ph: int = panels[0].get_height()
+		var gap: int = 8
+		var comp: Image = Image.create(pw * 4 + gap * 3, ph, false, Image.FORMAT_RGBA8)
+		comp.fill(Color.html("#0B0A0C"))
+		for idx: int in range(4):
+			comp.blit_rect(panels[idx], Rect2i(0, 0, pw, ph), Vector2i(idx * (pw + gap), 0))
+		comp.save_png(out_path)
+		print("[WP-09 Composite] Saved=%s size=%dx%d" % [out_path, comp.get_width(), comp.get_height()])
 
 func _build_window_hierarchy() -> void:
 	# 1. 伪磨砂圆角窗底 (#0E0F14, alpha=0.85, 圆角 12, 1px #FFFFFF14 描边 + 3% 程序化纸纹噪点)
@@ -597,6 +702,10 @@ func _consume_presentation_events() -> void:
 						ThemePaletteScript.color_old_gold_bright(),
 						true
 					)
+			SimEventScript.T.KILL:
+				main_card.trigger_death_dissolve()
+				if vfx_manager != null and bool(ev.payload.get("is_boss", false)):
+					vfx_manager.spawn_woodcut_explosion(card_center, ThemePaletteScript.color_old_gold_bright())
 
 func _on_manual_pickup_triggered(ilvl: int, rarity: int) -> void:
 	if game_ref != null:
@@ -668,23 +777,33 @@ func refresh_hud() -> void:
 	hp_bar.value = hp_ratio * 100.0
 
 	var delta_h: float = state.get_wealth_pressure_hp_delta()
+	var active_stage: int = state.get_active_stage()
+	var has_shield: bool = state.mob_shield_max_log > NumScript.ZERO
+	var main_spec: Dictionary = ArtRegistryScript.get_monster_visual_spec(active_stage, state.mobs_killed_in_stage, state.is_boss, has_shield)
+	var mob_title_str: String = str(main_spec.get("title", "守财亡骸"))
+
 	if state.is_boss:
-		label_mob_name.text = "深渊魔主"
+		label_mob_name.text = mob_title_str
 		label_mob_name.add_theme_color_override("font_color", ThemePaletteScript.color_old_gold_bright())
 		main_card.position = BOSS_CARD_POS
 		main_card.size = BOSS_CARD_SIZE
-		main_card.setup_role(MonsterCardViewScript.CardRole.BOSS_MOB, "深渊魔主")
+		main_card.setup_role(MonsterCardViewScript.CardRole.BOSS_MOB, mob_title_str)
+		main_card.apply_visual_spec(main_spec)
 		queue_card_1.visible = false
 		queue_card_2.visible = false
 	else:
-		label_mob_name.text = "守财亡骸"
-		label_mob_name.add_theme_color_override("font_color", ThemePaletteScript.color_ash_gray())
+		label_mob_name.text = mob_title_str
+		var name_col: Color = ThemePaletteScript.color_old_gold_bright() if bool(main_spec.get("is_elite", false)) else ThemePaletteScript.color_ash_gray()
+		label_mob_name.add_theme_color_override("font_color", name_col)
 		main_card.position = MAIN_CARD_POS
 		main_card.size = MAIN_CARD_SIZE
-		main_card.setup_role(MonsterCardViewScript.CardRole.MAIN_MOB, "守财亡骸")
+		main_card.setup_role(MonsterCardViewScript.CardRole.MAIN_MOB, mob_title_str)
+		main_card.apply_visual_spec(main_spec)
 		var remain_mobs: int = maxi(0, state.balance.mobs_per_stage - state.mobs_killed_in_stage)
 		queue_card_1.visible = remain_mobs >= 1 or state.farm_stage < state.current_stage
 		queue_card_2.visible = remain_mobs >= 2 or state.farm_stage < state.current_stage
+		queue_card_1.apply_visual_spec(ArtRegistryScript.get_monster_visual_spec(active_stage, state.mobs_killed_in_stage + 1, false, has_shield))
+		queue_card_2.apply_visual_spec(ArtRegistryScript.get_monster_visual_spec(active_stage, state.mobs_killed_in_stage + 2, false, has_shield))
 		queue_card_1.update_combat_visuals(1.0, delta_h, 0.0)
 		queue_card_2.update_combat_visuals(1.0, delta_h, 0.0)
 
@@ -731,15 +850,16 @@ func refresh_hud() -> void:
 	]
 
 	# 5. 六槽装备只读映射
-	for slot_key: String in SimStateScript.EQUIP_SLOTS:
-		var slot_view: EquipSlotViewScript = equip_slot_views.get(slot_key, null) as EquipSlotViewScript
-		if slot_view == null:
-			continue
-		var eq_item: ItemInstanceScript = state.equipped.get(slot_key, null) as ItemInstanceScript
-		if eq_item == null:
-			slot_view.set_item_state(false, -1, 0)
-		else:
-			slot_view.set_item_state(true, int(eq_item.rarity), eq_item.ilvl)
+	if not (_demo_wp09_v9 and _demo_vfx_fired):
+		for slot_key: String in SimStateScript.EQUIP_SLOTS:
+			var slot_view: EquipSlotViewScript = equip_slot_views.get(slot_key, null) as EquipSlotViewScript
+			if slot_view == null:
+				continue
+			var eq_item: ItemInstanceScript = state.equipped.get(slot_key, null) as ItemInstanceScript
+			if eq_item == null:
+				slot_view.set_item_state(false, -1, 0)
+			else:
+				slot_view.set_item_state(true, int(eq_item.rarity), eq_item.ilvl)
 
 	# 6. 杀戮狂热残影 Shader 层只读同步
 	if vfx_manager != null and main_card != null and not _demo_vfx_fired:
@@ -897,11 +1017,26 @@ func open_equip_compare_panel(slot_key: String) -> void:
 			row.add_theme_constant_override("separation", 6)
 			row_panel.add_child(row)
 
+			var cand_rarity: int = int(cand.get("rarity", 0))
+			var icon_tex: Texture2D = ArtRegistryScript.get_item_icon_texture(slot_key)
+			if icon_tex != null:
+				var icon_box: TextureRect = TextureRect.new()
+				icon_box.custom_minimum_size = Vector2(26.0, 26.0)
+				icon_box.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+				icon_box.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+				icon_box.texture = icon_tex
+				icon_box.material = ArtRegistryScript.make_palette_material(
+					ThemePaletteScript.get_rarity_color(cand_rarity),
+					cand_rarity >= 3,
+					1.0
+				)
+				row.add_child(icon_box)
+
 			var name_lbl: Label = Label.new()
 			name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			name_lbl.text = "%s Lv.%d" % [str(cand.get("name", "")), int(cand.get("ilvl", 1))]
 			name_lbl.add_theme_font_size_override("font_size", 11)
-			name_lbl.add_theme_color_override("font_color", ThemePaletteScript.get_rarity_color(int(cand.get("rarity", 0))))
+			name_lbl.add_theme_color_override("font_color", ThemePaletteScript.get_rarity_color(cand_rarity))
 			row.add_child(name_lbl)
 
 			var delta_pct: float = float(cand.get("delta_pct", 0.0))

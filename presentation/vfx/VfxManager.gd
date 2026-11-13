@@ -6,16 +6,21 @@ class_name VfxManager extends Node2D
 
 const VfxBudgetScript = preload("res://presentation/VfxBudget.gd")
 const ThemePaletteScript = preload("res://ui/ThemePalette.gd")
+const ArtRegistryScript = preload("res://ui/ArtRegistry.gd")
 const GroundSlamShader = preload("res://assets/art/shaders/ground_slam.gdshader")
 const AfterimageShader = preload("res://assets/art/shaders/afterimage.gdshader")
 
 const MAX_CONCURRENT_CRIT_RINGS: int = 3
 const MAX_CONCURRENT_LIGHTNING: int = 2
 const MAX_CONCURRENT_SLAMS: int = 4
+const MAX_CONCURRENT_EXPLOSIONS: int = 3
 const LIGHTNING_SEGMENTS: int = 4
 const LIGHTNING_JUMP_DURATION: float = 0.09
 const SLAM_DURATION: float = 0.25
 const SLAM_SIZE: float = 80.0
+const EXPLOSION_FRAMES: int = 16
+const EXPLOSION_DURATION: float = 0.56
+const V10_CENTER_RECT: Rect2 = Rect2(Vector2(66.0, 88.0), Vector2(228.0, 304.0))
 
 class ActiveVfx extends RefCounted:
 	var type: String = ""
@@ -42,10 +47,18 @@ class SlamSlot extends RefCounted:
 	var current_time: float = 0.0
 	var max_time: float = 0.25
 
+class ExplosionSlot extends RefCounted:
+	var sprite: Sprite2D = null
+	var active: bool = false
+	var current_time: float = 0.0
+	var max_time: float = 0.56
+	var base_color: Color = Color.WHITE
+
 var budget: VfxBudgetScript = null
 var _active_list: Array[ActiveVfx] = []
 var _lightning_pool: Array[LightningSlot] = []
 var _slam_pool: Array[SlamSlot] = []
+var _explosion_pool: Array[ExplosionSlot] = []
 var _frenzy_rect: ColorRect = null
 var _frenzy_material: ShaderMaterial = null
 var _frenzy_time: float = 0.0
@@ -54,6 +67,8 @@ var _edge_alert_time: float = 0.0
 var _edge_alert_max_time: float = 0.6
 var _edge_alert_color: Color = Color.TRANSPARENT
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
+var _occlusion_window: Array[Dictionary] = []
+var _max_rolling_200ms_occlusion: float = 0.0
 
 func _init() -> void:
 	budget = VfxBudgetScript.new()
@@ -124,6 +139,23 @@ func _init_pools() -> void:
 	_frenzy_rect.material = _frenzy_material
 	add_child(_frenzy_rect)
 
+	var exp_tex: Texture2D = ArtRegistryScript.load_texture_safe(ArtRegistryScript.VFX_EXPLOSION_SMALL)
+	for k: int in range(MAX_CONCURRENT_EXPLOSIONS):
+		var eslot: ExplosionSlot = ExplosionSlot.new()
+		var sp: Sprite2D = Sprite2D.new()
+		sp.name = "WoodcutExplosion_%d" % k
+		sp.texture = exp_tex
+		sp.hframes = 4
+		sp.vframes = 4
+		sp.frame = 0
+		sp.scale = Vector2(0.56, 0.56)
+		sp.material = add_mat
+		sp.visible = false
+		sp.z_index = 9
+		add_child(sp)
+		eslot.sprite = sp
+		_explosion_pool.push_back(eslot)
+
 func _process(delta: float) -> void:
 	var frame_ms: float = delta * 1000.0
 	_flush_compacted_overflows()
@@ -171,6 +203,21 @@ func _process(delta: float) -> void:
 	if _edge_alert_time > 0.0:
 		_edge_alert_time = maxf(0.0, _edge_alert_time - delta)
 
+	for eslot: ExplosionSlot in _explosion_pool:
+		if not eslot.active:
+			continue
+		eslot.current_time += delta
+		if eslot.current_time >= eslot.max_time:
+			eslot.active = false
+			eslot.sprite.visible = false
+		else:
+			var ep: float = clampf(eslot.current_time / eslot.max_time, 0.0, 0.999)
+			eslot.sprite.frame = clampi(int(ep * float(EXPLOSION_FRAMES)), 0, EXPLOSION_FRAMES - 1)
+			var mod_c: Color = eslot.base_color
+			mod_c.a = (1.0 - ep * 0.65) * 0.88
+			eslot.sprite.modulate = mod_c
+
+	_record_occlusion_sample(delta)
 	queue_redraw()
 
 func _flush_compacted_overflows() -> void:
@@ -270,6 +317,29 @@ func spawn_drop_explosion(pos: Vector2, rarity: int = 0) -> void:
 	target_slam.current_time = 0.0
 	target_slam.max_time = SLAM_DURATION
 	target_slam.active = true
+	spawn_woodcut_explosion(pos, ThemePaletteScript.get_rarity_color(rarity))
+
+## 播放 PixelFX 归一化 16 帧灰度木刻爆炸序列 (按色带染色，用于 Boss 击杀与落地即爆)
+func spawn_woodcut_explosion(pos: Vector2, tint_color: Color) -> void:
+	var target_exp: ExplosionSlot = null
+	for eslot: ExplosionSlot in _explosion_pool:
+		if not eslot.active:
+			target_exp = eslot
+			break
+	if target_exp == null:
+		return
+	if target_exp.sprite.texture == null:
+		target_exp.sprite.texture = ArtRegistryScript.load_texture_safe(ArtRegistryScript.VFX_EXPLOSION_SMALL)
+	if target_exp.sprite.texture == null:
+		return
+	target_exp.sprite.position = pos
+	target_exp.sprite.frame = 0
+	target_exp.base_color = tint_color.lerp(Color.html(ThemePaletteScript.HEX_CRIT_CORE), 0.25)
+	target_exp.sprite.modulate = target_exp.base_color
+	target_exp.sprite.visible = true
+	target_exp.current_time = 0.0
+	target_exp.max_time = EXPLOSION_DURATION
+	target_exp.active = true
 
 ## 产生杀戮狂热刻线环脉冲
 func spawn_killing_frenzy(pos: Vector2, stacks: int) -> void:
@@ -322,6 +392,75 @@ func get_active_slam_rects_count() -> int:
 		if slam.active:
 			cnt += 1
 	return cnt
+
+func get_active_explosions_count() -> int:
+	var cnt: int = 0
+	for eslot: ExplosionSlot in _explosion_pool:
+		if eslot.active:
+			cnt += 1
+	return cnt
+
+## V10 特效抢占度量：估算当前帧中心 40% 区域 (Rect2(66, 88, 228, 304)) 的有效特效像素遮挡比例 (0..1)
+func estimate_center_40pct_occlusion_ratio() -> float:
+	var center_area: float = V10_CENTER_RECT.size.x * V10_CENTER_RECT.size.y
+	var covered_px: float = 0.0
+
+	for vfx: ActiveVfx in _active_list:
+		if V10_CENTER_RECT.has_point(vfx.start_pos):
+			# 细刻线环：周长 × 线宽 (2.2px)
+			covered_px += TAU * vfx.max_radius * 2.4 * 1.4
+
+	for slot: LightningSlot in _lightning_pool:
+		if slot.active and slot.outer_line.points.size() >= 2:
+			var p0: Vector2 = slot.outer_line.points[0]
+			var p1: Vector2 = slot.outer_line.points[slot.outer_line.points.size() - 1]
+			covered_px += p0.distance_to(p1) * 3.0 * 0.65
+
+	for slam: SlamSlot in _slam_pool:
+		if slam.active:
+			var inter: Rect2 = V10_CENTER_RECT.intersection(Rect2(slam.rect.position, slam.rect.size))
+			# ground_slam 为镂空环 + 6 楔形裂痕，非透明像素占比约 18%
+			covered_px += inter.size.x * inter.size.y * 0.18
+
+	for eslot: ExplosionSlot in _explosion_pool:
+		if eslot.active and V10_CENTER_RECT.has_point(eslot.sprite.position):
+			# 128*0.56 = 71.7px 帧画幅，木刻爆炸有效亮部约占帧面积 26%
+			covered_px += (71.7 * 71.7) * 0.26
+
+	if _frenzy_rect != null and _frenzy_rect.visible and _frenzy_ratio > 0.0:
+		# afterimage 仅渲染双侧边缘细带，占框面积约 8% * frenzy_ratio
+		var finter: Rect2 = V10_CENTER_RECT.intersection(Rect2(_frenzy_rect.position, _frenzy_rect.size))
+		covered_px += finter.size.x * finter.size.y * 0.08 * _frenzy_ratio
+
+	return clampf(covered_px / maxf(1.0, center_area), 0.0, 1.0)
+
+func _record_occlusion_sample(delta: float) -> void:
+	var inst_ratio: float = estimate_center_40pct_occlusion_ratio()
+	_occlusion_window.push_back({"dt": maxf(0.001, delta), "ratio": inst_ratio})
+	var total_dt: float = 0.0
+	for item: Dictionary in _occlusion_window:
+		total_dt += float(item.get("dt", 0.0))
+	while total_dt > 0.20 and _occlusion_window.size() > 1:
+		var popped: Dictionary = _occlusion_window.pop_front()
+		total_dt -= float(popped.get("dt", 0.0))
+
+	var weighted_sum: float = 0.0
+	var weight_tot: float = 0.0
+	for item: Dictionary in _occlusion_window:
+		var w: float = float(item.get("dt", 0.0))
+		weighted_sum += float(item.get("ratio", 0.0)) * w
+		weight_tot += w
+	if weight_tot > 0.0:
+		var win_avg: float = weighted_sum / weight_tot
+		if win_avg > _max_rolling_200ms_occlusion:
+			_max_rolling_200ms_occlusion = win_avg
+
+func get_max_rolling_200ms_occlusion() -> float:
+	return _max_rolling_200ms_occlusion
+
+func reset_occlusion_stats() -> void:
+	_occlusion_window.clear()
+	_max_rolling_200ms_occlusion = 0.0
 
 func get_frenzy_afterimage_ratio() -> float:
 	return _frenzy_ratio

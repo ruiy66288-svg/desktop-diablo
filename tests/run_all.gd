@@ -133,6 +133,17 @@ func _init() -> void:
 				if bool(d6_ui_test_script.call("run")):
 					passed_count += 1
 
+	# 13. WP-09 正式美术与 Shader 集成 (自动接入): 若 res://tests/test_wp09_art_integration.gd 存在则执行
+	if ResourceLoader.exists("res://tests/test_wp09_art_integration.gd"):
+		var wp09_test_script: GDScript = ResourceLoader.load("res://tests/test_wp09_art_integration.gd") as GDScript
+		if wp09_test_script != null:
+			total_count += 1
+			if not wp09_test_script.can_instantiate():
+				printerr("[TestRunner] 可选测试脚本编译失败，计为未通过: " + wp09_test_script.resource_path)
+			else:
+				if bool(wp09_test_script.call("run")):
+					passed_count += 1
+
 	print("--------------------------------------------------")
 	if passed_count == total_count:
 		print("[TestRunner] 全部测试通过! 通过数 / 总数: %d / %d" % [passed_count, total_count])

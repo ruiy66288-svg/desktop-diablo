@@ -7,6 +7,7 @@ class_name LootFountain extends Node2D
 
 const ObjectPoolScript = preload("res://core/pool/ObjectPool.gd")
 const ThemePaletteScript = preload("res://ui/ThemePalette.gd")
+const ArtRegistryScript = preload("res://ui/ArtRegistry.gd")
 const LootBeamShader = preload("res://assets/art/shaders/loot_beam.gdshader")
 const SigilRingShader = preload("res://assets/art/shaders/sigil_ring.gdshader")
 
@@ -27,6 +28,7 @@ const MAX_X: float = 338.0
 
 const MAX_POOLED_BEAMS: int = 16
 const MAX_POOLED_SIGILS: int = 8
+const MAX_POOLED_ICONS: int = 16
 
 signal manual_pickup_triggered(ilvl: int, rarity: int)
 
@@ -43,6 +45,7 @@ class LootParticle extends RefCounted:
 	var manual_notified: bool = false
 	var target_dest: Vector2 = Vector2(180.0, 444.0)
 	var is_rare_slot: bool = false
+	var slot_key: String = "weapon"
 
 var normal_pool: ObjectPoolScript = null
 var rare_pool: ObjectPoolScript = null
@@ -50,6 +53,7 @@ var _active_particles: Array[LootParticle] = []
 var _overflow_compacted_drops: int = 0
 var _beam_rects: Array[ColorRect] = []
 var _sigil_rects: Array[ColorRect] = []
+var _icon_rects: Array[TextureRect] = []
 
 func _ready() -> void:
 	_ensure_pools_initialized()
@@ -121,8 +125,20 @@ func _init_shader_node_pools() -> void:
 		add_child(sigil_rect)
 		_sigil_rects.push_back(sigil_rect)
 
+	for k: int in range(MAX_POOLED_ICONS):
+		var icon_rect: TextureRect = TextureRect.new()
+		icon_rect.name = "PooledDropIcon_%d" % k
+		icon_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		icon_rect.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+		icon_rect.material = ArtRegistryScript.make_palette_material(Color.WHITE, false, 1.0)
+		icon_rect.visible = false
+		add_child(icon_rect)
+		_icon_rects.push_back(icon_rect)
+
 ## 产生单件掉落物喷泉弹射；暗金及以上 (>=3) 走 20 格专属池，普通走 100 格池（满时回收最老白/蓝装）
-func spawn_drop(origin: Vector2, rarity: int, launch_mul: float = 1.0, ilvl: int = 1) -> bool:
+func spawn_drop(origin: Vector2, rarity: int, launch_mul: float = 1.0, ilvl: int = 1, slot_key: String = "") -> bool:
 	_ensure_pools_initialized()
 	var is_rare: bool = rarity >= 3
 	var p: LootParticle = null
@@ -147,6 +163,8 @@ func spawn_drop(origin: Vector2, rarity: int, launch_mul: float = 1.0, ilvl: int
 	p.pos = origin
 	p.rarity = clampi(rarity, 0, 4)
 	p.ilvl = maxi(1, ilvl)
+	var slot_names: Array[String] = ["weapon", "helm", "chest", "gloves", "boots", "trinket"]
+	p.slot_key = slot_key if not slot_key.is_empty() else slot_names[posmod(p.ilvl + p.rarity, slot_names.size())]
 	p.age = 0.0
 	p.landed = false
 	p.landed_time = 0.0
@@ -204,6 +222,8 @@ func _hide_all_shader_nodes() -> void:
 		b.visible = false
 	for s: ColorRect in _sigil_rects:
 		s.visible = false
+	for ic: TextureRect in _icon_rects:
+		ic.visible = false
 
 func _process(delta: float) -> void:
 	step_simulation(delta, get_global_mouse_position())
@@ -272,35 +292,45 @@ func _sync_shader_nodes() -> void:
 
 	var beam_idx: int = 0
 	var sigil_idx: int = 0
+	var icon_idx: int = 0
 
-	# 优先为暗金/太古分配光柱与地面符印环，其次分配紫/蓝光柱
+	# 优先为暗金/太古分配光柱与地面符印环，其次分配紫/蓝/白光柱（V9 五档灰度明度严格递增）
 	for pass_rare: int in [1, 0]:
 		for p: LootParticle in _active_particles:
 			var is_high: bool = p.rarity >= 3
 			if (pass_rare == 1) != is_high:
 				continue
-			if p.rarity == 0 or not p.landed or p.is_magnetized:
+			if not p.landed or p.is_magnetized:
 				continue
 
 			var col: Color = ThemePaletteScript.get_rarity_color(p.rarity)
-			var beam_h: float = 42.0
-			var beam_w: float = 12.0
-			var max_life: float = 0.6
+			var beam_h: float = 26.0
+			var beam_w: float = 10.0
+			var max_life: float = 0.55
+			var beam_intensity: float = 0.24
 
-			if p.rarity == 2:
-				beam_h = 74.0
-				beam_w = 16.0
-				max_life = 1.0
+			if p.rarity == 1:
+				beam_h = 48.0
+				beam_w = 13.0
+				max_life = 0.80
+				beam_intensity = 0.58
+			elif p.rarity == 2:
+				beam_h = 80.0
+				beam_w = 17.0
+				max_life = 1.25
+				beam_intensity = 0.96
 			elif p.rarity == 3:
-				beam_h = 160.0
-				beam_w = 24.0
+				beam_h = 138.0
+				beam_w = 22.0
 				max_life = STAY_DURATION
+				beam_intensity = 1.35
 			elif p.rarity == 4:
-				beam_h = 180.0
-				beam_w = 28.0
+				beam_h = 168.0
+				beam_w = 26.0
 				max_life = STAY_DURATION
+				beam_intensity = 2.65
 
-			var life_alpha: float = clampf(1.0 - (p.landed_time / max_life) * 0.65, 0.0, 1.0)
+			var life_alpha: float = clampf(1.0 - (p.landed_time / max_life) * 0.55, 0.0, 1.0)
 			if p.landed_time <= max_life and beam_idx < _beam_rects.size():
 				var rect_node: ColorRect = _beam_rects[beam_idx]
 				rect_node.position = Vector2(p.pos.x - beam_w * 0.5, p.pos.y - beam_h)
@@ -309,7 +339,7 @@ func _sync_shader_nodes() -> void:
 				if mat != null:
 					mat.set_shader_parameter("beam_color", col)
 					mat.set_shader_parameter("life_alpha", life_alpha)
-					mat.set_shader_parameter("intensity", 1.45 if is_high else 1.0)
+					mat.set_shader_parameter("intensity", beam_intensity)
 				rect_node.visible = true
 				beam_idx += 1
 
@@ -325,10 +355,49 @@ func _sync_shader_nodes() -> void:
 				sig_node.visible = true
 				sigil_idx += 1
 
+			var drop_tex: Texture2D = ArtRegistryScript.get_item_icon_texture(p.slot_key)
+			if drop_tex != null and icon_idx < _icon_rects.size():
+				var ic_node: TextureRect = _icon_rects[icon_idx]
+				var side_px: float = 20.0 if is_high else 16.0
+				var inner_px: float = side_px - 3.0
+				ic_node.texture = drop_tex
+				ic_node.position = Vector2(p.pos.x - inner_px * 0.5, p.pos.y - inner_px * 0.5)
+				ic_node.size = Vector2(inner_px, inner_px)
+				var ic_mat: ShaderMaterial = ic_node.material as ShaderMaterial
+				if ic_mat != null:
+					ic_mat.set_shader_parameter("color_family", col)
+				ic_node.visible = true
+				icon_idx += 1
+
+## 为 V9 实机验收与灰度明度递增检测排列五档落地战利品光柱（左→右：白、蓝、紫、暗金、太古）
+func spawn_v9_showcase_five_tiers(y_pos: float = FLOOR_Y) -> void:
+	clear_all()
+	_ensure_pools_initialized()
+	_init_shader_node_pools()
+	var xs: Array[float] = [56.0, 118.0, 180.0, 242.0, 304.0]
+	var slots: Array[String] = ["boots", "gloves", "chest", "helm", "weapon"]
+	for tier: int in range(5):
+		spawn_drop(Vector2(xs[tier], y_pos), tier, 1.0, (tier + 1) * 10, slots[tier])
+		var p: LootParticle = _active_particles[_active_particles.size() - 1]
+		p.pos = Vector2(xs[tier], y_pos)
+		p.vel = Vector2.ZERO
+		p.landed = true
+		p.landed_time = 0.05
+	_sync_shader_nodes()
+	queue_redraw()
+
 func _draw() -> void:
 	var ink_col: Color = ThemePaletteScript.color_ink_black()
+	var card_bg: Color = ThemePaletteScript.color_card_bg()
 	for p: LootParticle in _active_particles:
 		var c: Color = ThemePaletteScript.get_rarity_color(p.rarity)
-		var r: float = 4.2 if p.rarity >= 3 else 3.2
-		draw_circle(p.pos, r + 1.0, ink_col)
-		draw_circle(p.pos, r, c)
+		var icon_tex: Texture2D = ArtRegistryScript.get_item_icon_texture(p.slot_key)
+		if icon_tex != null and p.landed and not p.is_magnetized:
+			var side: float = 20.0 if p.rarity >= 3 else 16.0
+			var box: Rect2 = Rect2(p.pos - Vector2(side * 0.5, side * 0.5), Vector2(side, side))
+			draw_rect(box, card_bg, true)
+			draw_rect(box, c, false, 1.2)
+		else:
+			var r: float = 4.2 if p.rarity >= 3 else 3.2
+			draw_circle(p.pos, r + 1.0, ink_col)
+			draw_circle(p.pos, r, c)
