@@ -144,6 +144,39 @@ func _init() -> void:
 				if bool(wp09_test_script.call("run")):
 					passed_count += 1
 
+	# 14. WP-P2-SIM-1 阶段 1.5/2 模拟内核、百层机制与深渊转生
+	if ResourceLoader.exists("res://tests/test_p2_sim_mechanics_abyss.gd"):
+		var p2_sim_script: GDScript = ResourceLoader.load("res://tests/test_p2_sim_mechanics_abyss.gd") as GDScript
+		if p2_sim_script != null:
+			total_count += 1
+			if not p2_sim_script.can_instantiate():
+				printerr("[TestRunner] 可选测试脚本编译失败，计为未通过: " + p2_sim_script.resource_path)
+			else:
+				if bool(p2_sim_script.call("run")):
+					passed_count += 1
+
+	# 15. WP-P15-FEEL 阶段 1.5 音频混音池、行囊过滤与微特效
+	if ResourceLoader.exists("res://tests/test_p15_audio_ui_vfx.gd"):
+		var p15_feel_script: GDScript = ResourceLoader.load("res://tests/test_p15_audio_ui_vfx.gd") as GDScript
+		if p15_feel_script != null:
+			total_count += 1
+			if not p15_feel_script.can_instantiate():
+				printerr("[TestRunner] 可选测试脚本编译失败，计为未通过: " + p15_feel_script.resource_path)
+			else:
+				if bool(p15_feel_script.call("run")):
+					passed_count += 1
+
+	# 16. WP-P15-FONT-PLAT 思源宋体子集化、系统托盘与 DWM 防黑底封装
+	if ResourceLoader.exists("res://tests/test_p2_platform_tray.gd"):
+		var p2_plat_script: GDScript = ResourceLoader.load("res://tests/test_p2_platform_tray.gd") as GDScript
+		if p2_plat_script != null:
+			total_count += 1
+			if not p2_plat_script.can_instantiate():
+				printerr("[TestRunner] 可选测试脚本编译失败，计为未通过: " + p2_plat_script.resource_path)
+			else:
+				if bool(p2_plat_script.call("run")):
+					passed_count += 1
+
 	print("--------------------------------------------------")
 	if passed_count == total_count:
 		print("[TestRunner] 全部测试通过! 通过数 / 总数: %d / %d" % [passed_count, total_count])
