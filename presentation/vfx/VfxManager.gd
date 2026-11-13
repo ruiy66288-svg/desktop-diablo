@@ -10,6 +10,19 @@ const ArtRegistryScript = preload("res://ui/ArtRegistry.gd")
 const GroundSlamShader = preload("res://assets/art/shaders/ground_slam.gdshader")
 const AfterimageShader = preload("res://assets/art/shaders/afterimage.gdshader")
 
+const ShieldShatterShader = preload("res://assets/art/shaders/shield_shatter.gdshader")
+const SmeltDissolveShader = preload("res://assets/art/shaders/smelt_dissolve.gdshader")
+const MAX_GOLD_MOTES: int = 64
+const GOLD_MOTE_DURATION: float = 0.50
+const SHIELD_SHATTER_DURATION: float = 0.35
+const SMELT_DURATION: float = 0.40
+const MAX_SMELT_SLOTS: int = 3
+const METEOR_DURATION: float = 0.60
+const HAMMER_DURATION: float = 0.40
+const GOLD_STORM_DURATION: float = 0.45
+const FOUNTAIN_BURST_DURATION: float = 0.40
+const GOLD_HUD_TARGET: Vector2 = Vector2(86.0, 406.0)
+const FURNACE_TARGET: Vector2 = Vector2(320.0, 366.0)
 const MAX_CONCURRENT_CRIT_RINGS: int = 3
 const MAX_CONCURRENT_LIGHTNING: int = 2
 const MAX_CONCURRENT_SLAMS: int = 4
@@ -54,7 +67,23 @@ class ExplosionSlot extends RefCounted:
 	var max_time: float = 0.56
 	var base_color: Color = Color.WHITE
 
+class SmeltSlot extends RefCounted:
+	var rect: TextureRect = null
+	var material: ShaderMaterial = null
+	var active: bool = false
+	var current_time: float = 0.0
+	var origin: Vector2 = Vector2.ZERO
+
+class ShieldSlot extends RefCounted:
+	var rect: ColorRect = null
+	var material: ShaderMaterial = null
+	var active: bool = false
+	var current_time: float = 0.0
+
 var budget: VfxBudgetScript = null
+var _smelt_pool: Array[SmeltSlot] = []
+var _shield_slot: ShieldSlot = null
+var _gold_motes: Array[Dictionary] = []
 var _active_list: Array[ActiveVfx] = []
 var _lightning_pool: Array[LightningSlot] = []
 var _slam_pool: Array[SlamSlot] = []
@@ -156,6 +185,42 @@ func _init_pools() -> void:
 		eslot.sprite = sp
 		_explosion_pool.push_back(eslot)
 
+	_shield_slot = ShieldSlot.new()
+	var sh_rect: ColorRect = ColorRect.new()
+	sh_rect.name = "ShieldShatterRect"
+	sh_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	sh_rect.color = Color.WHITE
+	sh_rect.visible = false
+	sh_rect.z_index = 12
+	var sh_mat: ShaderMaterial = ShaderMaterial.new()
+	sh_mat.shader = ShieldShatterShader
+	sh_mat.set_shader_parameter("progress", 0.0)
+	sh_mat.set_shader_parameter("shard_color", ThemePaletteScript.color_shield())
+	sh_mat.set_shader_parameter("edge_color", ThemePaletteScript.color_bone_white())
+	sh_rect.material = sh_mat
+	add_child(sh_rect)
+	_shield_slot.rect = sh_rect
+	_shield_slot.material = sh_mat
+
+	for m: int in range(MAX_SMELT_SLOTS):
+		var sm: SmeltSlot = SmeltSlot.new()
+		var sm_rect: TextureRect = TextureRect.new()
+		sm_rect.name = "SmeltDissolve_%d" % m
+		sm_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		sm_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		sm_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		sm_rect.size = Vector2(28.0, 28.0)
+		sm_rect.visible = false
+		sm_rect.z_index = 9
+		var sm_mat: ShaderMaterial = ShaderMaterial.new()
+		sm_mat.shader = SmeltDissolveShader
+		sm_mat.set_shader_parameter("dissolve", 0.0)
+		sm_rect.material = sm_mat
+		add_child(sm_rect)
+		sm.rect = sm_rect
+		sm.material = sm_mat
+		_smelt_pool.push_back(sm)
+
 func _process(delta: float) -> void:
 	var frame_ms: float = delta * 1000.0
 	_flush_compacted_overflows()
@@ -216,6 +281,37 @@ func _process(delta: float) -> void:
 			var mod_c: Color = eslot.base_color
 			mod_c.a = (1.0 - ep * 0.65) * 0.88
 			eslot.sprite.modulate = mod_c
+
+	if _shield_slot != null and _shield_slot.active:
+		_shield_slot.current_time += delta
+		if _shield_slot.current_time >= SHIELD_SHATTER_DURATION:
+			_shield_slot.active = false
+			_shield_slot.rect.visible = false
+		else:
+			_shield_slot.material.set_shader_parameter(
+				"progress",
+				clampf(_shield_slot.current_time / SHIELD_SHATTER_DURATION, 0.0, 1.0)
+			)
+
+	for sm: SmeltSlot in _smelt_pool:
+		if not sm.active:
+			continue
+		sm.current_time += delta
+		if sm.current_time >= SMELT_DURATION:
+			sm.active = false
+			sm.rect.visible = false
+		else:
+			sm.material.set_shader_parameter(
+				"dissolve",
+				clampf(sm.current_time / SMELT_DURATION, 0.0, 1.0)
+			)
+
+	var kept_motes: Array[Dictionary] = []
+	for d: Dictionary in _gold_motes:
+		d["t"] = float(d["t"]) + delta
+		if float(d["t"]) < GOLD_MOTE_DURATION:
+			kept_motes.push_back(d)
+	_gold_motes = kept_motes
 
 	_record_occlusion_sample(delta)
 	queue_redraw()
@@ -379,6 +475,158 @@ func spawn_edge_alert(rarity: int) -> void:
 	_edge_alert_time = _edge_alert_max_time
 	queue_redraw()
 
+## 护盾破碎 (钢蓝 Voronoi 碎片飞散, 350ms, 同屏 1)
+func spawn_shield_shatter(card_rect: Rect2) -> void:
+	if _shield_slot == null or _shield_slot.active:
+		return
+	if not budget.request_vfx("shield_shatter", 2):
+		return
+	var pad: Vector2 = Vector2(16.0, 14.0)
+	_shield_slot.rect.position = card_rect.position - pad
+	_shield_slot.rect.size = card_rect.size + pad * 2.0
+	_shield_slot.material.set_shader_parameter("progress", 0.0)
+	_shield_slot.rect.visible = true
+	_shield_slot.current_time = 0.0
+	_shield_slot.active = true
+
+## 自动熔炼溶解: 图标由下往上溶成余烬刻线, 飞向熔炉角标 (400ms, 预算合并)
+func spawn_smelt_ember(from_pos: Vector2, slot_key: String = "weapon", rarity: int = 0) -> bool:
+	if not budget.request_vfx("smelt_ember", 0):
+		return false
+	var tex: Texture2D = ArtRegistryScript.get_item_icon_texture(slot_key)
+	if tex == null:
+		return false
+	var target: SmeltSlot = null
+	for sm: SmeltSlot in _smelt_pool:
+		if not sm.active:
+			target = sm
+			break
+	if target == null:
+		return false
+	target.rect.texture = tex
+	target.rect.position = from_pos - target.rect.size * 0.5
+	target.origin = from_pos
+	target.material.set_shader_parameter("dissolve", 0.0)
+	target.material.set_shader_parameter("ember_color", Color.html(ThemePaletteScript.HEX_CRIT_EDGE).lerp(ThemePaletteScript.get_rarity_color(rarity), 0.25))
+	target.rect.visible = true
+	target.current_time = 0.0
+	target.active = true
+
+	var v: ActiveVfx = ActiveVfx.new()
+	v.type = "ember_lines"
+	v.start_pos = from_pos
+	v.end_pos = FURNACE_TARGET
+	v.max_time = SMELT_DURATION
+	v.color = Color.html(ThemePaletteScript.HEX_CRIT_EDGE)
+	_active_list.push_back(v)
+	return true
+
+## 金币吸附: 4-6px 金色短线沿二次曲线飞向 HUD 金币栏 (500ms, 总上限 64 颗)
+func spawn_gold_magnet(from_pos: Vector2, count: int = 6) -> int:
+	var spawned: int = 0
+	for i: int in range(count):
+		if _gold_motes.size() >= MAX_GOLD_MOTES:
+			break
+		var bend: float = _rng.randf_range(-60.0, 60.0)
+		_gold_motes.push_back({
+			"t": -_rng.randf_range(0.0, 0.08),
+			"from": from_pos + Vector2(_rng.randf_range(-10.0, 10.0), _rng.randf_range(-6.0, 6.0)),
+			"bend": bend,
+			"len": _rng.randf_range(4.0, 6.0)
+		})
+		spawned += 1
+	return spawned
+
+## 陨石: 楔形拖尾 + 落点冲击环 + 碎刻线 (600ms, 同屏 1)
+func spawn_meteor(target_pos: Vector2) -> void:
+	if _count_active_type("meteor") >= 1:
+		return
+	if not budget.request_vfx("meteor", 3):
+		return
+	var v: ActiveVfx = ActiveVfx.new()
+	v.type = "meteor"
+	v.start_pos = target_pos
+	v.max_time = METEOR_DURATION
+	v.max_radius = 34.0
+	v.color = Color.html(ThemePaletteScript.HEX_CRIT_EDGE)
+	_active_list.push_back(v)
+
+## 处刑之锤: 残影巨锤劈落 + 冲击刻线 (400ms, 同屏 1)
+func spawn_hammer(target_pos: Vector2) -> void:
+	if _count_active_type("hammer") >= 1:
+		return
+	if not budget.request_vfx("hammer", 2):
+		return
+	var v: ActiveVfx = ActiveVfx.new()
+	v.type = "hammer"
+	v.start_pos = target_pos
+	v.max_time = HAMMER_DURATION
+	v.max_radius = 30.0
+	v.color = ThemePaletteScript.color_bone_white()
+	_active_list.push_back(v)
+
+## 金币风暴: 金色折线弹幕 (450ms, 同屏 1)
+func spawn_gold_storm(target_pos: Vector2) -> void:
+	if _count_active_type("gold_storm") >= 1:
+		return
+	if not budget.request_vfx("gold_storm", 2):
+		return
+	var v: ActiveVfx = ActiveVfx.new()
+	v.type = "gold_storm"
+	v.start_pos = target_pos
+	v.max_time = GOLD_STORM_DURATION
+	v.max_radius = 26.0
+	v.color = ThemePaletteScript.color_coin_gold()
+	var seeds: Array[float] = []
+	for i: int in range(7):
+		seeds.push_back(_rng.randf_range(-1.0, 1.0))
+	v.extra_data["seeds"] = seeds
+	_active_list.push_back(v)
+
+## 终焉喷泉: 金色放射楔形刻线 (400ms, 同屏 1)
+func spawn_fountain_burst(origin_pos: Vector2) -> void:
+	if _count_active_type("fountain_burst") >= 1:
+		return
+	if not budget.request_vfx("fountain_burst", 3):
+		return
+	var v: ActiveVfx = ActiveVfx.new()
+	v.type = "fountain_burst"
+	v.start_pos = origin_pos
+	v.max_time = FOUNTAIN_BURST_DURATION
+	v.max_radius = 44.0
+	v.color = ThemePaletteScript.color_old_gold_bright()
+	_active_list.push_back(v)
+
+## 统一映射: Sim 词条 vfx_key -> 表现层特效 (主怪卡中心为 pos)
+func spawn_by_vfx_key(vfx_key: String, pos: Vector2, card_rect: Rect2 = Rect2()) -> bool:
+	match vfx_key:
+		"meteor":
+			spawn_meteor(pos)
+		"hammer":
+			spawn_hammer(pos)
+		"gold_storm":
+			spawn_gold_storm(pos)
+		"fountain_burst":
+			spawn_fountain_burst(pos)
+		"shield_shatter":
+			spawn_shield_shatter(card_rect if card_rect.size != Vector2.ZERO else Rect2(pos - Vector2(88.0, 110.0), Vector2(176.0, 220.0)))
+		_:
+			return false
+	return true
+
+func get_active_gold_motes_count() -> int:
+	return _gold_motes.size()
+
+func is_shield_shatter_active() -> bool:
+	return _shield_slot != null and _shield_slot.active
+
+func get_active_smelt_count() -> int:
+	var cnt: int = 0
+	for sm: SmeltSlot in _smelt_pool:
+		if sm.active:
+			cnt += 1
+	return cnt
+
 func get_active_lightning_lines_count() -> int:
 	var cnt: int = 0
 	for slot: LightningSlot in _lightning_pool:
@@ -421,6 +669,15 @@ func estimate_center_40pct_occlusion_ratio() -> float:
 			var inter: Rect2 = V10_CENTER_RECT.intersection(Rect2(slam.rect.position, slam.rect.size))
 			# ground_slam 为镂空环 + 6 楔形裂痕，非透明像素占比约 18%
 			covered_px += inter.size.x * inter.size.y * 0.18
+
+	if _shield_slot != null and _shield_slot.active:
+		# 护盾碎片: 半透明钢蓝玻璃 + 骨白细边, 有效不透明亮部约 12%
+		var sh_inter: Rect2 = V10_CENTER_RECT.intersection(Rect2(_shield_slot.rect.position, _shield_slot.rect.size))
+		covered_px += sh_inter.size.x * sh_inter.size.y * 0.12
+
+	for sm: SmeltSlot in _smelt_pool:
+		if sm.active and V10_CENTER_RECT.has_point(sm.origin):
+			covered_px += 28.0 * 28.0 * 0.5
 
 	for eslot: ExplosionSlot in _explosion_pool:
 		if eslot.active and V10_CENTER_RECT.has_point(eslot.sprite.position):
@@ -484,11 +741,51 @@ func _draw() -> void:
 		ec.a = edge_a
 		draw_rect(Rect2(Vector2(2.0, 2.0), Vector2(356.0, 476.0)), ec, false, 2.5)
 
+	for d: Dictionary in _gold_motes:
+		var dt_t: float = float(d["t"])
+		if dt_t < 0.0:
+			continue
+		var gp: float = clampf(dt_t / GOLD_MOTE_DURATION, 0.0, 1.0)
+		var g_from: Vector2 = d["from"] as Vector2
+		var g_ctrl: Vector2 = g_from.lerp(GOLD_HUD_TARGET, 0.5) + Vector2(0.0, float(d["bend"]))
+		var g_pos: Vector2 = _bezier(g_from, g_ctrl, GOLD_HUD_TARGET, gp)
+		var g_prev: Vector2 = _bezier(g_from, g_ctrl, GOLD_HUD_TARGET, maxf(0.0, gp - 0.05))
+		var g_dir: Vector2 = (g_pos - g_prev).normalized()
+		var g_col: Color = ThemePaletteScript.color_coin_gold()
+		g_col.a = 1.0 - gp * 0.45
+		draw_line(g_pos - g_dir * float(d["len"]), g_pos, g_col, 1.6)
+
 	for vfx: ActiveVfx in _active_list:
 		var progress: float = clampf(vfx.current_time / vfx.max_time, 0.0, 1.0)
 		var alpha: float = 1.0 - progress
 
 		match vfx.type:
+			"meteor":
+				_draw_meteor(vfx, progress)
+			"hammer":
+				_draw_hammer(vfx, progress)
+			"gold_storm":
+				_draw_gold_storm(vfx, progress)
+			"fountain_burst":
+				var fb_c: Color = vfx.color
+				fb_c.a = alpha * 0.9
+				var fb_r: float = vfx.max_radius * (0.35 + 0.65 * progress)
+				draw_arc(vfx.start_pos, fb_r, PI, TAU, 22, fb_c, 2.0)
+				for fk: int in range(8):
+					var fang: float = PI + (float(fk) + 0.5) * (PI / 8.0)
+					var fdir: Vector2 = Vector2(cos(fang), sin(fang))
+					draw_line(vfx.start_pos + fdir * fb_r * 0.55, vfx.start_pos + fdir * (fb_r + 8.0), fb_c, 2.0)
+			"ember_lines":
+				for ek: int in range(5):
+					var et: float = clampf(progress * 1.25 - float(ek) * 0.07, 0.0, 1.0)
+					if et <= 0.0 or et >= 1.0:
+						continue
+					var e_ctrl: Vector2 = vfx.start_pos.lerp(vfx.end_pos, 0.5) + Vector2(float(ek - 2) * 14.0, -34.0)
+					var e_pos: Vector2 = _bezier(vfx.start_pos, e_ctrl, vfx.end_pos, et)
+					var e_prev: Vector2 = _bezier(vfx.start_pos, e_ctrl, vfx.end_pos, maxf(0.0, et - 0.08))
+					var e_col: Color = vfx.color
+					e_col.a = (1.0 - et) * 0.9
+					draw_line(e_prev, e_pos, e_col, 1.4)
 			"crit_ring":
 				var r_outer: float = vfx.max_radius * progress
 				var r_inner: float = r_outer * 0.55
@@ -516,3 +813,93 @@ func _draw() -> void:
 				draw_arc(vfx.start_pos, r, 0.0, TAU, 28, col, 3.0)
 				if font != null and vfx.merge_count > 1:
 					draw_string(font, vfx.start_pos + Vector2(-12.0, -r - 4.0), "×%d" % vfx.merge_count, HORIZONTAL_ALIGNMENT_CENTER, -1.0, 13, col)
+
+
+static func _bezier(a: Vector2, b: Vector2, c: Vector2, t: float) -> Vector2:
+	var u: float = 1.0 - t
+	return a * (u * u) + b * (2.0 * u * t) + c * (t * t)
+
+## 陨石: 前 55% 楔形拖尾俯冲, 后 45% 落点冲击环 + 6 道碎刻线
+func _draw_meteor(vfx: ActiveVfx, progress: float) -> void:
+	var fall_end: float = 0.55
+	var ember_c: Color = vfx.color
+	var bone_c: Color = ThemePaletteScript.color_bone_white()
+	if progress < fall_end:
+		var f: float = progress / fall_end
+		var from_pt: Vector2 = vfx.start_pos + Vector2(-64.0, -150.0)
+		var head: Vector2 = from_pt.lerp(vfx.start_pos, f * f)
+		var dir: Vector2 = (vfx.start_pos - from_pt).normalized()
+		var perp: Vector2 = Vector2(-dir.y, dir.x)
+		var tail: Vector2 = head - dir * 54.0
+		var wedge: PackedVector2Array = PackedVector2Array([head + perp * 3.5, head - perp * 3.5, tail])
+		var wc: Color = ember_c
+		wc.a = 0.9
+		draw_colored_polygon(wedge, wc)
+		var core: Color = bone_c
+		core.a = 0.95
+		draw_line(head, head - dir * 26.0, core, 1.6)
+	else:
+		var q: float = (progress - fall_end) / (1.0 - fall_end)
+		var ring_c: Color = ember_c
+		ring_c.a = (1.0 - q) * 0.9
+		draw_arc(vfx.start_pos, vfx.max_radius * q, 0.0, TAU, 26, ring_c, 2.4)
+		var shard_c: Color = bone_c
+		shard_c.a = (1.0 - q) * 0.9
+		for k: int in range(6):
+			var ang: float = float(k) * (TAU / 6.0) + 0.4
+			var d2: Vector2 = Vector2(cos(ang), sin(ang))
+			draw_line(vfx.start_pos + d2 * (vfx.max_radius * q * 0.6), vfx.start_pos + d2 * (vfx.max_radius * q + 7.0), shard_c, 1.4)
+
+## 处刑之锤: 3 帧残影巨锤自上劈落, 末段冲击刻线
+func _draw_hammer(vfx: ActiveVfx, progress: float) -> void:
+	var drop_end: float = 0.55
+	var bone_c: Color = vfx.color
+	var ink_c: Color = ThemePaletteScript.color_ink_black()
+	if progress < drop_end:
+		var f: float = progress / drop_end
+		for g: int in range(3):
+			var gf: float = maxf(0.0, f - float(g) * 0.14)
+			var head_pos: Vector2 = vfx.start_pos + Vector2(0.0, -96.0 * (1.0 - gf * gf))
+			var ga: float = (1.0 - float(g) * 0.32) * 0.85
+			var hc: Color = bone_c
+			hc.a = ga
+			var handle_top: Vector2 = head_pos + Vector2(0.0, -34.0)
+			draw_line(handle_top, head_pos, hc, 2.0)
+			var head_rect: Rect2 = Rect2(head_pos - Vector2(13.0, 6.0), Vector2(26.0, 12.0))
+			draw_rect(head_rect, hc, true)
+			var oc: Color = ink_c
+			oc.a = ga
+			draw_rect(head_rect, oc, false, 1.2)
+	else:
+		var q: float = (progress - drop_end) / (1.0 - drop_end)
+		var sc: Color = bone_c
+		sc.a = (1.0 - q) * 0.9
+		for k: int in range(5):
+			var side: float = -1.0 if k % 2 == 0 else 1.0
+			var spread: float = 6.0 + float(k / 2) * 9.0
+			var from_p: Vector2 = vfx.start_pos + Vector2(side * (6.0 + spread * q), 14.0)
+			draw_line(from_p, from_p + Vector2(side * (10.0 + 18.0 * q), -4.0 - float(k) * 1.5), sc, 1.6)
+		var ring: Color = ThemePaletteScript.color_old_gold_bright()
+		ring.a = (1.0 - q) * 0.7
+		draw_arc(vfx.start_pos + Vector2(0.0, 14.0), vfx.max_radius * q, PI, TAU, 18, ring, 2.0)
+
+## 金币风暴: 金色折线弹幕自上而下汇入目标
+func _draw_gold_storm(vfx: ActiveVfx, progress: float) -> void:
+	var seeds: Array = vfx.extra_data.get("seeds", []) as Array
+	var col: Color = vfx.color
+	col.a = (1.0 - progress * 0.6) * 0.95
+	for i: int in range(seeds.size()):
+		var off: float = float(seeds[i]) * 52.0
+		var top: Vector2 = Vector2(vfx.start_pos.x + off, vfx.start_pos.y - 118.0)
+		var bottom: Vector2 = Vector2(vfx.start_pos.x + off * 0.25, vfx.start_pos.y - 4.0)
+		var head_t: float = clampf(progress * 1.5 - float(i) * 0.05, 0.0, 1.0)
+		var tail_t: float = maxf(0.0, head_t - 0.38)
+		if head_t <= 0.0:
+			continue
+		var pts: PackedVector2Array = PackedVector2Array()
+		for s: int in range(5):
+			var tt: float = lerpf(tail_t, head_t, float(s) / 4.0)
+			var base_p: Vector2 = top.lerp(bottom, tt)
+			var zig: float = 6.0 if s % 2 == 0 else -6.0
+			pts.push_back(base_p + Vector2(zig, 0.0))
+		draw_polyline(pts, col, 1.6)

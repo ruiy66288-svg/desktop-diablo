@@ -178,3 +178,53 @@ static func step_quantize(v: float) -> float:
 	if v > 0.38:
 		return 0.45
 	return 0.0
+
+# ---- 思源宋体 (Noto Serif SC, SIL OFL 1.1) 自适应绑定: 文件存在则全局挂载, 不存在平滑回退默认字体 ----
+const SERIF_FONT_CANDIDATES: Array[String] = [
+	"res://assets/fonts/NotoSerifSC-Subset.ttf",
+	"res://assets/fonts/NotoSerifSC-Subset.otf"
+]
+
+static var _cached_serif_font: Font = null
+static var _serif_font_probed: bool = false
+
+static func get_serif_font_path() -> String:
+	for p: String in SERIF_FONT_CANDIDATES:
+		if FileAccess.file_exists(p) or ResourceLoader.exists(p):
+			return p
+	return ""
+
+static func has_serif_font() -> bool:
+	return not get_serif_font_path().is_empty()
+
+static func get_serif_font() -> Font:
+	if _serif_font_probed:
+		return _cached_serif_font
+	_serif_font_probed = true
+	var path: String = get_serif_font_path()
+	if path.is_empty():
+		return null
+	var loaded: Font = null
+	if ResourceLoader.exists(path):
+		loaded = ResourceLoader.load(path) as Font
+	if loaded == null:
+		var ff: FontFile = FontFile.new()
+		var abs_path: String = ProjectSettings.globalize_path(path)
+		var err: Error = ff.load_dynamic_font(abs_path)
+		if err == OK:
+			loaded = ff
+	_cached_serif_font = loaded
+	return _cached_serif_font
+
+static func reset_font_probe() -> void:
+	_cached_serif_font = null
+	_serif_font_probed = false
+
+## 构造带衬线主字体的 Theme (字体缺失时返回 null, 调用方保持默认字体)
+static func make_serif_theme() -> Theme:
+	var f: Font = get_serif_font()
+	if f == null:
+		return null
+	var th: Theme = Theme.new()
+	th.default_font = f
+	return th

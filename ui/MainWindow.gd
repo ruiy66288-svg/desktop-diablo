@@ -23,6 +23,9 @@ const DryRunScript = preload("res://simulation/commands/DryRun.gd")
 const SignatureAffixesScript = preload("res://simulation/affix/SignatureAffixes.gd")
 const SystemsDrawerScript = preload("res://ui/SystemsDrawer.gd")
 const ArtRegistryScript = preload("res://ui/ArtRegistry.gd")
+const InventoryFilterPanelScript = preload("res://ui/InventoryFilterPanel.gd")
+const AttentionGlowScript = preload("res://ui/AttentionGlow.gd")
+const SfxBankScript = preload("res://presentation/audio/SfxBank.gd")
 
 const WINDOW_WIDTH: float = 360.0
 const WINDOW_HEIGHT: float = 480.0
@@ -56,6 +59,10 @@ var btn_passthrough: Button = null
 var btn_systems: Button = null
 var btn_close: Button = null
 var systems_drawer: SystemsDrawerScript = null
+var inventory_panel: InventoryFilterPanelScript = null
+var attention_glow: AttentionGlowScript = null
+var btn_inventory: Button = null
+var btn_mute: Button = null
 
 var label_run_best: Label = null
 var label_stage_detail: Label = null
@@ -130,6 +137,11 @@ func _ready() -> void:
 
 	if sfx_mixer == null:
 		sfx_mixer = SfxMixerScript.new()
+	sfx_mixer.attach_host(self)
+
+	var serif_theme: Theme = ThemePaletteScript.make_serif_theme()
+	if serif_theme != null and theme == null:
+		theme = serif_theme
 
 	if game_ref == null:
 		var tree_game: GameScript = GameScript.resolve_from_tree(get_tree())
@@ -156,6 +168,8 @@ func bind_game(p_game: GameScript) -> void:
 	game_ref = p_game
 	if systems_drawer != null:
 		systems_drawer.bind_game(game_ref)
+	if inventory_panel != null:
+		inventory_panel.bind_game(game_ref)
 	if game_ref != null and not game_ref.restored_from_minimized.is_connected(_on_restored_from_minimized):
 		game_ref.restored_from_minimized.connect(_on_restored_from_minimized)
 	if label_run_best != null:
@@ -381,6 +395,46 @@ func _build_window_hierarchy() -> void:
 	)
 	btn_systems.pressed.connect(_on_btn_systems_pressed)
 	title_bar.add_child(btn_systems)
+
+	btn_inventory = Button.new()
+	btn_inventory.name = "BtnInventory"
+	btn_inventory.position = Vector2(WINDOW_WIDTH - 152.0, 3.0)
+	btn_inventory.size = Vector2(40.0, 18.0)
+	btn_inventory.focus_mode = Control.FOCUS_NONE
+	btn_inventory.text = "行囊"
+	btn_inventory.tooltip_text = "24 格背包 / 品质过滤 / 属性明细"
+	btn_inventory.add_theme_font_size_override("font_size", 10)
+	btn_inventory.add_theme_color_override("font_color", ThemePaletteScript.color_old_gold_bright())
+	btn_inventory.add_theme_stylebox_override(
+		"normal",
+		ThemePaletteScript.make_button_style(ThemePaletteScript.color_card_bg(), ThemePaletteScript.color_iron_gray(), 3)
+	)
+	btn_inventory.add_theme_stylebox_override(
+		"hover",
+		ThemePaletteScript.make_button_style(ThemePaletteScript.color_card_bg(), ThemePaletteScript.color_old_gold(), 3)
+	)
+	btn_inventory.pressed.connect(_on_btn_inventory_pressed)
+	title_bar.add_child(btn_inventory)
+
+	btn_mute = Button.new()
+	btn_mute.name = "BtnMute"
+	btn_mute.position = Vector2(WINDOW_WIDTH - 180.0, 3.0)
+	btn_mute.size = Vector2(24.0, 18.0)
+	btn_mute.focus_mode = Control.FOCUS_NONE
+	btn_mute.text = "音"
+	btn_mute.tooltip_text = "静音 / 开启音效"
+	btn_mute.add_theme_font_size_override("font_size", 10)
+	btn_mute.add_theme_color_override("font_color", ThemePaletteScript.color_bone_shadow())
+	btn_mute.add_theme_stylebox_override(
+		"normal",
+		ThemePaletteScript.make_button_style(ThemePaletteScript.color_card_bg(), ThemePaletteScript.color_iron_gray(), 3)
+	)
+	btn_mute.add_theme_stylebox_override(
+		"hover",
+		ThemePaletteScript.make_button_style(ThemePaletteScript.color_card_bg(), ThemePaletteScript.color_old_gold(), 3)
+	)
+	btn_mute.pressed.connect(_on_btn_mute_pressed)
+	title_bar.add_child(btn_mute)
 
 	btn_passthrough = Button.new()
 	btn_passthrough.name = "BtnPassthrough"
@@ -624,6 +678,14 @@ func _build_window_hierarchy() -> void:
 	systems_drawer.bind_game(game_ref)
 	add_child(systems_drawer)
 
+	# 10. 阶段 1.5 行囊 · 过滤 · 属性抽屉 + L5 边缘提醒光带
+	inventory_panel = InventoryFilterPanelScript.new()
+	inventory_panel.bind_game(game_ref)
+	add_child(inventory_panel)
+
+	attention_glow = AttentionGlowScript.new()
+	add_child(attention_glow)
+
 ## 排空并消费 PresentationBus 事件，驱动喷泉弹道、单层飘字、签名特效与音效预算 (WP-08)
 func _consume_presentation_events() -> void:
 	if sfx_mixer != null:
@@ -655,6 +717,11 @@ func _consume_presentation_events() -> void:
 					vfx_manager.spawn_drop_explosion(card_center, int(ev.hint.get("rarity", 0)))
 				"killing_frenzy":
 					vfx_manager.spawn_killing_frenzy(card_center, state.buffs.get_stacks("killing_frenzy"))
+				"meteor", "hammer", "gold_storm", "fountain_burst", "shield_shatter":
+					vfx_manager.spawn_by_vfx_key(vfx_key, card_center, Rect2(main_card.position, main_card.size))
+					if sfx_mixer != null:
+						var key_sfx: String = "shield_shatter" if vfx_key == "shield_shatter" else vfx_key
+						sfx_mixer.request_play_sound(key_sfx, vfx_manager.budget)
 
 		match ev.type:
 			SimEventScript.T.HIT:
@@ -691,10 +758,38 @@ func _consume_presentation_events() -> void:
 						loot_fountain.spawn_drop(card_center, rarity, launch_mul, ilvl)
 				if vfx_manager != null and rarity >= 3:
 					vfx_manager.spawn_edge_alert(rarity)
+				if attention_glow != null and rarity >= 3 and _is_unique_upgrade_candidate(state, ev):
+					attention_glow.push_signal(AttentionGlowScript.KIND_BETTER_UNIQUE, rarity)
 				if sfx_mixer != null and vfx_manager != null:
-					var sfx_id: String = "drop_rare" if rarity >= 3 else "drop_normal"
+					var sfx_id: String = "coin_pickup"
+					if rarity >= 4:
+						sfx_id = "drop_primal"
+					elif rarity == 3:
+						sfx_id = "drop_unique"
+					elif rarity == 2:
+						sfx_id = "drop_purple"
+					elif rarity == 1:
+						sfx_id = "drop_blue"
 					sfx_mixer.request_play_sound(sfx_id, vfx_manager.budget)
+			SimEventScript.T.SMELT:
+				if vfx_manager != null:
+					var smelt_rarity: int = int(ev.payload.get("rarity", 0))
+					var smelt_uid: int = int(ev.payload.get("item_uid", 0))
+					var smelt_slot: String = ItemInstanceScript.SLOT_KEYS[posmod(smelt_uid, ItemInstanceScript.SLOT_KEYS.size())]
+					vfx_manager.spawn_smelt_ember(card_center + Vector2(0.0, 40.0), smelt_slot, smelt_rarity)
+					vfx_manager.spawn_gold_magnet(card_center + Vector2(0.0, 40.0), 4)
+				if sfx_mixer != null and vfx_manager != null:
+					sfx_mixer.request_play_sound("smelt_ember", vfx_manager.budget)
+			SimEventScript.T.METEOR:
+				if vfx_manager != null:
+					vfx_manager.spawn_meteor(card_center)
+				if sfx_mixer != null and vfx_manager != null:
+					sfx_mixer.request_play_sound("meteor_impact", vfx_manager.budget)
+			SimEventScript.T.ATTENTION:
+				_handle_attention_event(ev)
 			SimEventScript.T.STAGE_UP:
+				if sfx_mixer != null and vfx_manager != null and posmod(int(round(ev.value)), 100) == 1 and int(round(ev.value)) > 1:
+					sfx_mixer.request_play_sound("toll_unlock", vfx_manager.budget)
 				if floating_text != null:
 					floating_text.add_floating_text(
 						"第 %d 层" % int(round(ev.value)),
@@ -704,6 +799,8 @@ func _consume_presentation_events() -> void:
 					)
 			SimEventScript.T.KILL:
 				main_card.trigger_death_dissolve()
+				if vfx_manager != null:
+					vfx_manager.spawn_gold_magnet(card_center + Vector2(0.0, 30.0), 3)
 				if vfx_manager != null and bool(ev.payload.get("is_boss", false)):
 					vfx_manager.spawn_woodcut_explosion(card_center, ThemePaletteScript.color_old_gold_bright())
 
@@ -1087,6 +1184,7 @@ func _on_btn_systems_pressed() -> void:
 
 func open_systems_drawer(tab_idx: int = -1) -> void:
 	close_equip_compare_panel()
+	close_inventory_panel()
 	if systems_drawer != null:
 		systems_drawer.open_tab(tab_idx)
 
@@ -1094,8 +1192,67 @@ func close_systems_drawer() -> void:
 	if systems_drawer != null:
 		systems_drawer.close_drawer()
 
+func _on_btn_inventory_pressed() -> void:
+	if inventory_panel == null:
+		return
+	if inventory_panel.visible:
+		close_inventory_panel()
+	else:
+		open_inventory_panel(-1)
+
+func open_inventory_panel(tab_idx: int = -1) -> void:
+	close_equip_compare_panel()
+	close_systems_drawer()
+	if inventory_panel != null:
+		inventory_panel.open_tab(tab_idx)
+
+func close_inventory_panel() -> void:
+	if inventory_panel != null:
+		inventory_panel.close_drawer()
+
+func _on_btn_mute_pressed() -> void:
+	if sfx_mixer == null:
+		return
+	var muted: bool = sfx_mixer.toggle_muted()
+	btn_mute.text = "静" if muted else "音"
+	btn_mute.add_theme_color_override(
+		"font_color",
+		ThemePaletteScript.color_ash_gray() if muted else ThemePaletteScript.color_bone_shadow()
+	)
+
+const ATTENTION_DRY_SEED: int = 987654321
+var _attention_uid_cache: Dictionary = {}
+
+## 新暗金/太古入包且干跑 Δ>0 才亮 better_unique 光带 (02 §5.4); 已亮则只刷新不重复干跑
+func _is_unique_upgrade_candidate(state: SimStateScript, _ev: SimEventScript) -> bool:
+	if attention_glow != null and attention_glow.get_active_kinds().has(AttentionGlowScript.KIND_BETTER_UNIQUE):
+		return true
+	var n: int = state.inventory.get_count()
+	for i: int in range(n - 1, -1, -1):
+		var it: ItemInstanceScript = state.inventory.get_item_at(i)
+		if it == null or int(it.rarity) < 3:
+			continue
+		if _attention_uid_cache.has(it.uid):
+			return bool(_attention_uid_cache[it.uid])
+		var res: Dictionary = DryRunScript.evaluate_candidate(state, it, ATTENTION_DRY_SEED)
+		var positive: bool = float(res.get("delta_pct", 0.0)) > 0.05
+		if _attention_uid_cache.size() > 64:
+			_attention_uid_cache.clear()
+		_attention_uid_cache[it.uid] = positive
+		return positive
+	return false
+
+func _handle_attention_event(ev: SimEventScript) -> void:
+	if attention_glow == null:
+		return
+	var kind: String = str(ev.payload.get("signal", ev.hint.get("signal", "")))
+	if kind.is_empty():
+		kind = AttentionGlowScript.KIND_WALL_HINT
+	attention_glow.push_signal(kind, int(ev.payload.get("rarity", 3)))
+
 func _on_equip_slot_clicked(slot_key: String) -> void:
 	close_systems_drawer()
+	close_inventory_panel()
 	if equip_compare_panel != null and equip_compare_panel.visible and _active_compare_slot == slot_key:
 		close_equip_compare_panel()
 	else:
