@@ -199,6 +199,17 @@ func _init() -> void:
 				if bool(p2_ui_script.call("run")):
 					passed_count += 1
 
+	# 19. WP-P2-UI-2 图鉴、稀有 Boss 召唤房、幻化外观与离线回归报告卡 UI
+	if ResourceLoader.exists("res://tests/test_p2_ui_codex_summon_report.gd"):
+		var p2_ui2_script: GDScript = ResourceLoader.load("res://tests/test_p2_ui_codex_summon_report.gd") as GDScript
+		if p2_ui2_script != null:
+			total_count += 1
+			if not p2_ui2_script.can_instantiate():
+				printerr("[TestRunner] 可选测试脚本编译失败，计为未通过: " + p2_ui2_script.resource_path)
+			else:
+				if bool(p2_ui2_script.call("run")):
+					passed_count += 1
+
 	print("--------------------------------------------------")
 	if passed_count == total_count:
 		print("[TestRunner] 全部测试通过! 通过数 / 总数: %d / %d" % [passed_count, total_count])

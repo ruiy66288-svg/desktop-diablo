@@ -12,16 +12,19 @@ const PresentationBusScript = preload("res://presentation/PresentationBus.gd")
 const SimEventScript = preload("res://simulation/events/SimEvent.gd")
 const SaveServiceScript = preload("res://persistence/SaveService.gd")
 const OfflineCalcScript = preload("res://offline/OfflineCalc.gd")
+const CodexScript = preload("res://persistence/Codex.gd")
 
 const AUTOLOAD_NODE_NAME: String = "GameAutoload"
 const DEFAULT_MASTER_SEED: int = 20261112
 const UNCONSUMED_BUS_SAFETY_CAP: int = 512
 const DEFAULT_SAVE_PATH: String = "user://save.json"
+const DEFAULT_CODEX_PATH: String = "user://codex.json"
 const AUTO_SAVE_INTERVAL_SEC: float = 30.0
 
 signal sim_ticked(steps: int)
 signal restored_from_minimized(summary: Dictionary)
 signal offline_settled(summary: Dictionary)
+signal return_report_requested(report: Dictionary)
 signal mute_toggled(muted: bool)
 
 var _state: SimStateScript = null
@@ -191,6 +194,15 @@ func request_unequip_vault_power(affix_id: String) -> void:
 func request_ack_signal(kind: int) -> void:
 	submit_command(CommandScript.make_ack_signal(kind))
 
+func request_summon_rare_boss() -> void:
+	submit_command(CommandScript.make_summon_rare_boss())
+
+func request_abort_rare_boss() -> void:
+	submit_command(CommandScript.make_abort_rare_boss())
+
+func request_set_transmog(slot_key: String, appearance_id: String) -> void:
+	submit_command(CommandScript.make_set_transmog(slot_key, appearance_id))
+
 func set_audio_muted(muted: bool) -> bool:
 	_audio_muted = muted
 	if DisplayServer.get_name() != "headless" and AudioServer.get_bus_count() > 0:
@@ -225,6 +237,11 @@ func save_current_game(save_path: String = DEFAULT_SAVE_PATH, now_unix: float = 
 		if f != null:
 			f.store_string(JSON.stringify({"last_save_unix": ts}))
 			f.close()
+		if _state.codex != null:
+			var codex_path: String = DEFAULT_CODEX_PATH
+			if save_path != DEFAULT_SAVE_PATH and not save_path.is_empty():
+				codex_path = save_path.get_base_dir().path_join("codex.json")
+			_state.codex.save_to_file(codex_path)
 	return err
 
 func load_saved_game(save_path: String = DEFAULT_SAVE_PATH, now_unix: float = -1.0, p_balance: BalanceScript = null) -> Dictionary:
@@ -237,6 +254,12 @@ func load_saved_game(save_path: String = DEFAULT_SAVE_PATH, now_unix: float = -1
 	_bus = PresentationBusScript.new()
 	_was_minimized = false
 	_last_minimized_summary = {}
+
+	var codex_path: String = DEFAULT_CODEX_PATH
+	if save_path != DEFAULT_SAVE_PATH and not save_path.is_empty():
+		codex_path = save_path.get_base_dir().path_join("codex.json")
+	var c: CodexScript = _state.ensure_codex()
+	c.load_from_file(codex_path)
 
 	var ts: float = now_unix if now_unix >= 0.0 else Time.get_unix_time_from_system()
 	var last_unix: float = ts
@@ -253,4 +276,5 @@ func load_saved_game(save_path: String = DEFAULT_SAVE_PATH, now_unix: float = -1
 	_last_offline_summary = OfflineCalcScript.settle(_state, elapsed, ts)
 	_last_offline_summary["loaded"] = true
 	offline_settled.emit(_last_offline_summary)
+	return_report_requested.emit(_last_offline_summary)
 	return _last_offline_summary

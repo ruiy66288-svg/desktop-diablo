@@ -12,6 +12,7 @@ var slot_key: String = "weapon"
 var has_equipped_item: bool = false
 var item_rarity: int = -1
 var item_ilvl: int = 0
+var transmog_id: String = ""
 
 var _icon_rect: TextureRect = null
 var _icon_mat: ShaderMaterial = null
@@ -61,6 +62,14 @@ func set_item_state(p_equipped: bool, p_rarity: int = -1, p_ilvl: int = 0) -> vo
 	_refresh_slot_styles()
 	queue_redraw()
 
+func set_transmog_id(p_transmog_id: String) -> void:
+	_ensure_icon_node()
+	if transmog_id == p_transmog_id and _icon_rect.texture != null:
+		return
+	transmog_id = p_transmog_id
+	_refresh_slot_styles()
+	queue_redraw()
+
 func has_formal_icon_texture() -> bool:
 	return _icon_rect != null and _icon_rect.texture != null
 
@@ -83,19 +92,28 @@ func _refresh_slot_styles() -> void:
 	add_theme_stylebox_override("pressed", hover_style)
 	add_theme_stylebox_override("disabled", normal_style)
 
-	var is_uniq_or_primal: bool = has_equipped_item and item_rarity >= 3
-	var tex: Texture2D = ArtRegistryScript.get_item_icon_texture(slot_key, is_uniq_or_primal)
+	var is_uniq_or_primal: bool = (has_equipped_item and item_rarity >= 3) or not transmog_id.is_empty()
+	var tex: Texture2D = null
+	if not transmog_id.is_empty():
+		if transmog_id == "transmog_archon_blade" or transmog_id == "uniq_weapon_thunder":
+			tex = ArtRegistryScript.load_texture_safe(ArtRegistryScript.UNIQ_WEAPON_THUNDER)
+		elif transmog_id == "unique_trinket" or transmog_id == "uniq_trinket_scales":
+			tex = ArtRegistryScript.load_texture_safe(ArtRegistryScript.UNIQ_TRINKET_SCALES)
+		else:
+			tex = ArtRegistryScript.get_item_icon_texture(slot_key, true)
+	if tex == null:
+		tex = ArtRegistryScript.get_item_icon_texture(slot_key, is_uniq_or_primal)
 	_icon_rect.texture = tex
 	_icon_rect.visible = (tex != null)
 
 	if _icon_mat != null:
-		if has_equipped_item:
-			var r_col: Color = ThemePaletteScript.get_rarity_color(item_rarity)
+		if has_equipped_item or not transmog_id.is_empty():
+			var r_col: Color = ThemePaletteScript.get_rarity_color(item_rarity if has_equipped_item else 4)
 			_icon_mat.set_shader_parameter("color_ink", Color.html("#0B0A0C"))
 			_icon_mat.set_shader_parameter("color_bone", Color.html("#E8DCC0"))
 			_icon_mat.set_shader_parameter("color_family", r_col)
 			_icon_mat.set_shader_parameter("color_gold", Color.html("#C9A04E"))
-			_icon_mat.set_shader_parameter("enable_outline", item_rarity >= 3)
+			_icon_mat.set_shader_parameter("enable_outline", item_rarity >= 3 or not transmog_id.is_empty())
 			_icon_mat.set_shader_parameter("outline_width", 1.2)
 			_icon_rect.modulate = Color.WHITE
 		else:

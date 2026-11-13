@@ -28,6 +28,8 @@ const AttentionGlowScript = preload("res://ui/AttentionGlow.gd")
 const SfxBankScript = preload("res://presentation/audio/SfxBank.gd")
 const BandRulesScript = preload("res://simulation/mechanics/BandRules.gd")
 const MechanicDefScript = preload("res://simulation/mechanics/MechanicDef.gd")
+const CodexSummonPanelScript = preload("res://ui/CodexSummonPanel.gd")
+const ReturnReportModalScript = preload("res://ui/ReturnReportModal.gd")
 
 const WINDOW_WIDTH: float = 360.0
 const WINDOW_HEIGHT: float = 480.0
@@ -60,11 +62,16 @@ var label_title: Label = null
 var btn_passthrough: Button = null
 var btn_systems: Button = null
 var btn_close: Button = null
+var btn_codex: Button = null
 var systems_drawer: SystemsDrawerScript = null
 var inventory_panel: InventoryFilterPanelScript = null
+var codex_panel: CodexSummonPanelScript = null
+var return_report_modal: ReturnReportModalScript = null
 var attention_glow: AttentionGlowScript = null
 var btn_inventory: Button = null
 var btn_mute: Button = null
+var btn_retreat_rare_boss: Button = null
+var _capture_p2_showcase_path: String = ""
 
 var label_run_best: Label = null
 var label_stage_detail: Label = null
@@ -181,17 +188,23 @@ func bind_game(p_game: GameScript) -> void:
 		game_ref.restored_from_minimized.disconnect(_on_restored_from_minimized)
 	if game_ref != null and game_ref.mute_toggled.is_connected(_on_game_mute_toggled):
 		game_ref.mute_toggled.disconnect(_on_game_mute_toggled)
+	if game_ref != null and game_ref.return_report_requested.is_connected(_on_return_report_requested):
+		game_ref.return_report_requested.disconnect(_on_return_report_requested)
 	game_ref = p_game
 	if systems_drawer != null:
 		systems_drawer.bind_game(game_ref)
 	if inventory_panel != null:
 		inventory_panel.bind_game(game_ref)
+	if codex_panel != null:
+		codex_panel.bind_game(game_ref)
 	if desktop_window != null:
 		desktop_window.bind_game(game_ref)
 	if game_ref != null and not game_ref.restored_from_minimized.is_connected(_on_restored_from_minimized):
 		game_ref.restored_from_minimized.connect(_on_restored_from_minimized)
 	if game_ref != null and not game_ref.mute_toggled.is_connected(_on_game_mute_toggled):
 		game_ref.mute_toggled.connect(_on_game_mute_toggled)
+	if game_ref != null and not game_ref.return_report_requested.is_connected(_on_return_report_requested):
+		game_ref.return_report_requested.connect(_on_return_report_requested)
 	if label_run_best != null:
 		refresh_hud()
 
@@ -231,7 +244,7 @@ func _process(delta: float) -> void:
 				if sv != null:
 					sv.set_item_state(true, demo_rarities[s_idx], (s_idx + 1) * 12)
 
-	if not _capture_done and (not _capture_preview_path.is_empty() or not _capture_wealth_composite_path.is_empty()):
+	if not _capture_done and (not _capture_preview_path.is_empty() or not _capture_wealth_composite_path.is_empty() or not _capture_p2_showcase_path.is_empty()):
 		_capture_elapsed_sec += delta
 		if _capture_elapsed_sec >= _capture_after_sec:
 			_capture_done = true
@@ -239,6 +252,7 @@ func _process(delta: float) -> void:
 
 func _parse_capture_user_args() -> void:
 	var user_args: PackedStringArray = OS.get_cmdline_user_args()
+	user_args.append_array(OS.get_cmdline_args())
 	var target_sec: float = 25.0
 	for arg: String in user_args:
 		if arg.begins_with("--capture-preview="):
@@ -247,13 +261,15 @@ func _parse_capture_user_args() -> void:
 			_capture_grayscale_path = arg.trim_prefix("--capture-grayscale=")
 		elif arg.begins_with("--capture-wealth-composite="):
 			_capture_wealth_composite_path = arg.trim_prefix("--capture-wealth-composite=")
+		elif arg.begins_with("--capture-p2-showcase="):
+			_capture_p2_showcase_path = arg.trim_prefix("--capture-p2-showcase=")
 		elif arg.begins_with("--capture-after-sec="):
 			target_sec = maxf(0.5, float(arg.trim_prefix("--capture-after-sec=")))
 		elif arg == "--demo-affix-vfx":
 			_demo_affix_vfx = true
 		elif arg == "--demo-wp09-v9":
 			_demo_wp09_v9 = true
-	if not _capture_preview_path.is_empty() or not _capture_wealth_composite_path.is_empty():
+	if not _capture_preview_path.is_empty() or not _capture_wealth_composite_path.is_empty() or not _capture_p2_showcase_path.is_empty():
 		_capture_after_sec = target_sec
 
 func _capture_viewport_and_quit() -> void:
@@ -283,6 +299,8 @@ func _capture_viewport_and_quit() -> void:
 				])
 		if not _capture_wealth_composite_path.is_empty():
 			await _capture_boss_and_wealth_states_composite(vp, _capture_wealth_composite_path)
+		if not _capture_p2_showcase_path.is_empty():
+			await _capture_p2_showcase_composite(vp, _capture_p2_showcase_path)
 	if get_tree() != null:
 		get_tree().quit(0)
 
@@ -359,6 +377,103 @@ func _capture_boss_and_wealth_states_composite(vp: Viewport, out_path: String) -
 		comp.save_png(out_path)
 		print("[WP-09 Composite] Saved=%s size=%dx%d" % [out_path, comp.get_width(), comp.get_height()])
 
+func _capture_p2_showcase_composite(vp: Viewport, out_path: String) -> void:
+	if game_ref != null:
+		game_ref.set_auto_tick_enabled(false)
+	set_process(false)
+	if loot_fountain != null:
+		loot_fountain.clear_all()
+	if floating_text != null:
+		floating_text.visible = false
+	if vfx_manager != null:
+		vfx_manager.update_killing_frenzy_afterimage(0, Rect2())
+		vfx_manager.visible = false
+
+	var state: SimStateScript = game_ref.get_sim_state() if game_ref != null else null
+	if state != null:
+		state.ensure_codex()
+		state.codex.summon_runes = maxi(state.codex.summon_runes, 3)
+
+	var panels: Array[Image] = []
+
+	# Panel 1: 主战场 · 契约大执政官 30s 试炼态 (含倒计时、撤退按钮、机制状态栏、卡墙横幅与 AttentionGlow)
+	close_systems_drawer()
+	close_inventory_panel()
+	close_codex_panel()
+	if return_report_modal != null:
+		return_report_modal.visible = false
+	if state != null:
+		state.is_rare_boss_active = true
+		state.rare_boss_timer = 6.4
+		state.mob_shield_max_log = 5.0
+		state.mob_shield_cur_log = 3.8
+	_last_wall_hint_active = true
+	if wall_hint_banner != null:
+		wall_hint_banner.visible = true
+		if lbl_wall_hint != null:
+			lbl_wall_hint.text = "◆ 契约试炼：装备背包已收录雷霆之刃！[破壁]"
+	if attention_glow != null:
+		attention_glow.push_signal(AttentionGlowScript.KIND_WALL_HINT)
+	refresh_hud()
+	await RenderingServer.frame_post_draw
+	await RenderingServer.frame_post_draw
+	var snap1: Image = vp.get_texture().get_image()
+	if snap1 != null:
+		panels.push_back(snap1)
+
+	# Panel 2: 行囊抽屉 · 24 格破壁高亮与威能装配
+	if state != null:
+		state.is_rare_boss_active = false
+	refresh_hud()
+	open_inventory_panel(0)
+	await RenderingServer.frame_post_draw
+	await RenderingServer.frame_post_draw
+	var snap2: Image = vp.get_texture().get_image()
+	if snap2 != null:
+		panels.push_back(snap2)
+
+	# Panel 3: 图鉴与首领召唤抽屉
+	close_inventory_panel()
+	open_codex_panel(1)
+	await RenderingServer.frame_post_draw
+	await RenderingServer.frame_post_draw
+	var snap3: Image = vp.get_texture().get_image()
+	if snap3 != null:
+		panels.push_back(snap3)
+
+	# Panel 4: 离线回归清算账本模态报告卡
+	close_codex_panel()
+	if return_report_modal != null:
+		return_report_modal.show_report({
+			"elapsed_seconds": 28800.0,
+			"effective_seconds": 28800.0,
+			"capped": false,
+			"gold_gain_log": 12.8,
+			"research_done": ["tech_auto_upgrade", "tech_credit_line_2"],
+			"run_best_before": 105,
+			"run_best_after": 142,
+			"stages_advanced": 37,
+			"debt_repaid_log": 9.5,
+			"new_uniques": ["雷霆之刃", "贪婪契约印戒"],
+			"new_summon_runes": 3
+		})
+	await RenderingServer.frame_post_draw
+	await RenderingServer.frame_post_draw
+	var snap4: Image = vp.get_texture().get_image()
+	if snap4 != null:
+		panels.push_back(snap4)
+
+	if panels.size() == 4:
+		var pw: int = panels[0].get_width()
+		var ph: int = panels[0].get_height()
+		var gap: int = 8
+		var comp: Image = Image.create(pw * 4 + gap * 3, ph, false, Image.FORMAT_RGBA8)
+		comp.fill(Color.html("#0B0A0C"))
+		for idx: int in range(4):
+			comp.blit_rect(panels[idx], Rect2i(0, 0, pw, ph), Vector2i(idx * (pw + gap), 0))
+		comp.save_png(out_path)
+		print("[WP-P2 Live Showcase] Saved=%s size=%dx%d" % [out_path, comp.get_width(), comp.get_height()])
+
 func _build_window_hierarchy() -> void:
 	# 1. 伪磨砂圆角窗底 (#0E0F14, alpha=0.85, 圆角 12, 1px #FFFFFF14 描边 + 3% 程序化纸纹噪点)
 	background_panel = Panel.new()
@@ -401,16 +516,76 @@ func _build_window_hierarchy() -> void:
 
 	label_title = Label.new()
 	label_title.name = "LabelTitle"
-	label_title.position = Vector2(14.0, 3.0)
-	label_title.size = Vector2(160.0, 18.0)
+	label_title.position = Vector2(10.0, 3.0)
+	label_title.size = Vector2(98.0, 18.0)
 	label_title.text = "◆ 桌面破坏神"
 	label_title.add_theme_font_size_override("font_size", 11)
 	label_title.add_theme_color_override("font_color", ThemePaletteScript.color_bone_shadow())
 	title_bar.add_child(label_title)
 
+	btn_mute = Button.new()
+	btn_mute.name = "BtnMute"
+	btn_mute.position = Vector2(114.0, 3.0)
+	btn_mute.size = Vector2(22.0, 18.0)
+	btn_mute.focus_mode = Control.FOCUS_NONE
+	btn_mute.text = "音"
+	btn_mute.tooltip_text = "静音 / 开启音效"
+	btn_mute.add_theme_font_size_override("font_size", 10)
+	btn_mute.add_theme_color_override("font_color", ThemePaletteScript.color_bone_shadow())
+	btn_mute.add_theme_stylebox_override(
+		"normal",
+		ThemePaletteScript.make_button_style(ThemePaletteScript.color_card_bg(), ThemePaletteScript.color_iron_gray(), 3)
+	)
+	btn_mute.add_theme_stylebox_override(
+		"hover",
+		ThemePaletteScript.make_button_style(ThemePaletteScript.color_card_bg(), ThemePaletteScript.color_old_gold(), 3)
+	)
+	btn_mute.pressed.connect(_on_btn_mute_pressed)
+	title_bar.add_child(btn_mute)
+
+	btn_codex = Button.new()
+	btn_codex.name = "BtnCodex"
+	btn_codex.position = Vector2(140.0, 3.0)
+	btn_codex.size = Vector2(36.0, 18.0)
+	btn_codex.focus_mode = Control.FOCUS_NONE
+	btn_codex.text = "图鉴"
+	btn_codex.tooltip_text = "永久图鉴 / 隐藏套装 / 召唤首领 / 外观幻化"
+	btn_codex.add_theme_font_size_override("font_size", 10)
+	btn_codex.add_theme_color_override("font_color", ThemePaletteScript.color_old_gold_bright())
+	btn_codex.add_theme_stylebox_override(
+		"normal",
+		ThemePaletteScript.make_button_style(ThemePaletteScript.color_card_bg(), ThemePaletteScript.color_iron_gray(), 3)
+	)
+	btn_codex.add_theme_stylebox_override(
+		"hover",
+		ThemePaletteScript.make_button_style(ThemePaletteScript.color_card_bg(), ThemePaletteScript.color_old_gold(), 3)
+	)
+	btn_codex.pressed.connect(_on_btn_codex_pressed)
+	title_bar.add_child(btn_codex)
+
+	btn_inventory = Button.new()
+	btn_inventory.name = "BtnInventory"
+	btn_inventory.position = Vector2(180.0, 3.0)
+	btn_inventory.size = Vector2(36.0, 18.0)
+	btn_inventory.focus_mode = Control.FOCUS_NONE
+	btn_inventory.text = "行囊"
+	btn_inventory.tooltip_text = "24 格背包 / 品质过滤 / 属性明细"
+	btn_inventory.add_theme_font_size_override("font_size", 10)
+	btn_inventory.add_theme_color_override("font_color", ThemePaletteScript.color_old_gold_bright())
+	btn_inventory.add_theme_stylebox_override(
+		"normal",
+		ThemePaletteScript.make_button_style(ThemePaletteScript.color_card_bg(), ThemePaletteScript.color_iron_gray(), 3)
+	)
+	btn_inventory.add_theme_stylebox_override(
+		"hover",
+		ThemePaletteScript.make_button_style(ThemePaletteScript.color_card_bg(), ThemePaletteScript.color_old_gold(), 3)
+	)
+	btn_inventory.pressed.connect(_on_btn_inventory_pressed)
+	title_bar.add_child(btn_inventory)
+
 	btn_systems = Button.new()
 	btn_systems.name = "BtnSystems"
-	btn_systems.position = Vector2(WINDOW_WIDTH - 108.0, 3.0)
+	btn_systems.position = Vector2(220.0, 3.0)
 	btn_systems.size = Vector2(36.0, 18.0)
 	btn_systems.focus_mode = Control.FOCUS_NONE
 	btn_systems.text = "系统"
@@ -428,49 +603,9 @@ func _build_window_hierarchy() -> void:
 	btn_systems.pressed.connect(_on_btn_systems_pressed)
 	title_bar.add_child(btn_systems)
 
-	btn_inventory = Button.new()
-	btn_inventory.name = "BtnInventory"
-	btn_inventory.position = Vector2(WINDOW_WIDTH - 152.0, 3.0)
-	btn_inventory.size = Vector2(40.0, 18.0)
-	btn_inventory.focus_mode = Control.FOCUS_NONE
-	btn_inventory.text = "行囊"
-	btn_inventory.tooltip_text = "24 格背包 / 品质过滤 / 属性明细"
-	btn_inventory.add_theme_font_size_override("font_size", 10)
-	btn_inventory.add_theme_color_override("font_color", ThemePaletteScript.color_old_gold_bright())
-	btn_inventory.add_theme_stylebox_override(
-		"normal",
-		ThemePaletteScript.make_button_style(ThemePaletteScript.color_card_bg(), ThemePaletteScript.color_iron_gray(), 3)
-	)
-	btn_inventory.add_theme_stylebox_override(
-		"hover",
-		ThemePaletteScript.make_button_style(ThemePaletteScript.color_card_bg(), ThemePaletteScript.color_old_gold(), 3)
-	)
-	btn_inventory.pressed.connect(_on_btn_inventory_pressed)
-	title_bar.add_child(btn_inventory)
-
-	btn_mute = Button.new()
-	btn_mute.name = "BtnMute"
-	btn_mute.position = Vector2(WINDOW_WIDTH - 180.0, 3.0)
-	btn_mute.size = Vector2(24.0, 18.0)
-	btn_mute.focus_mode = Control.FOCUS_NONE
-	btn_mute.text = "音"
-	btn_mute.tooltip_text = "静音 / 开启音效"
-	btn_mute.add_theme_font_size_override("font_size", 10)
-	btn_mute.add_theme_color_override("font_color", ThemePaletteScript.color_bone_shadow())
-	btn_mute.add_theme_stylebox_override(
-		"normal",
-		ThemePaletteScript.make_button_style(ThemePaletteScript.color_card_bg(), ThemePaletteScript.color_iron_gray(), 3)
-	)
-	btn_mute.add_theme_stylebox_override(
-		"hover",
-		ThemePaletteScript.make_button_style(ThemePaletteScript.color_card_bg(), ThemePaletteScript.color_old_gold(), 3)
-	)
-	btn_mute.pressed.connect(_on_btn_mute_pressed)
-	title_bar.add_child(btn_mute)
-
 	btn_passthrough = Button.new()
 	btn_passthrough.name = "BtnPassthrough"
-	btn_passthrough.position = Vector2(WINDOW_WIDTH - 68.0, 3.0)
+	btn_passthrough.position = Vector2(260.0, 3.0)
 	btn_passthrough.size = Vector2(34.0, 18.0)
 	btn_passthrough.focus_mode = Control.FOCUS_NONE
 	btn_passthrough.text = "常驻"
@@ -494,7 +629,7 @@ func _build_window_hierarchy() -> void:
 
 	btn_close = Button.new()
 	btn_close.name = "BtnClose"
-	btn_close.position = Vector2(WINDOW_WIDTH - 30.0, 3.0)
+	btn_close.position = Vector2(WINDOW_WIDTH - 28.0, 3.0)
 	btn_close.size = Vector2(20.0, 18.0)
 	btn_close.focus_mode = Control.FOCUS_NONE
 	btn_close.text = "×"
@@ -669,6 +804,26 @@ func _build_window_hierarchy() -> void:
 	queue_card_2.setup_role(MonsterCardViewScript.CardRole.QUEUE_MOB, "待战 #2")
 	battlefield_layer.add_child(queue_card_2)
 
+	btn_retreat_rare_boss = Button.new()
+	btn_retreat_rare_boss.name = "BtnRetreatRareBoss"
+	btn_retreat_rare_boss.position = Vector2(236.0, 260.0)
+	btn_retreat_rare_boss.size = Vector2(100.0, 24.0)
+	btn_retreat_rare_boss.focus_mode = Control.FOCUS_NONE
+	btn_retreat_rare_boss.text = "撤退(返还符文)"
+	btn_retreat_rare_boss.visible = false
+	btn_retreat_rare_boss.add_theme_font_size_override("font_size", 9)
+	btn_retreat_rare_boss.add_theme_color_override("font_color", ThemePaletteScript.color_old_gold_bright())
+	btn_retreat_rare_boss.add_theme_stylebox_override(
+		"normal",
+		ThemePaletteScript.make_button_style(ThemePaletteScript.color_blood_ink(), Color.html("#D43F3A"), 3)
+	)
+	btn_retreat_rare_boss.add_theme_stylebox_override(
+		"hover",
+		ThemePaletteScript.make_button_style(ThemePaletteScript.color_card_bg(), ThemePaletteScript.color_old_gold_bright(), 3)
+	)
+	btn_retreat_rare_boss.pressed.connect(_on_retreat_rare_boss_pressed)
+	battlefield_layer.add_child(btn_retreat_rare_boss)
+
 	# 5. 324–392 掉落地面与快捷攻击淬炼按钮（通过 Command 闭环消费金币）
 	var ground_line: ColorRect = ColorRect.new()
 	ground_line.name = "LootGroundLine"
@@ -788,6 +943,18 @@ func _build_window_hierarchy() -> void:
 	inventory_panel = InventoryFilterPanelScript.new()
 	inventory_panel.bind_game(game_ref)
 	add_child(inventory_panel)
+
+	# 11. 阶段 2 图鉴 · 召唤 · 幻化三合一面板
+	codex_panel = CodexSummonPanelScript.new()
+	codex_panel.bind_game(game_ref)
+	add_child(codex_panel)
+
+	# 12. 离线回归报告模态卡
+	return_report_modal = ReturnReportModalScript.new()
+	return_report_modal.claimed.connect(_on_return_report_claimed)
+	add_child(return_report_modal)
+	if game_ref != null and not game_ref.return_report_requested.is_connected(_on_return_report_requested):
+		game_ref.return_report_requested.connect(_on_return_report_requested)
 
 	attention_glow = AttentionGlowScript.new()
 	add_child(attention_glow)
@@ -1046,10 +1213,31 @@ func refresh_hud() -> void:
 	var delta_h: float = state.get_wealth_pressure_hp_delta()
 	var active_stage: int = state.get_active_stage()
 	var has_shield: bool = state.mob_shield_max_log > NumScript.ZERO
-	var main_spec: Dictionary = ArtRegistryScript.get_monster_visual_spec(active_stage, state.mobs_killed_in_stage, state.is_boss, has_shield)
+	var is_rare_boss: bool = state.is_rare_boss_active
+	var main_spec: Dictionary = ArtRegistryScript.get_monster_visual_spec(
+		active_stage,
+		state.mobs_killed_in_stage,
+		state.is_boss or is_rare_boss,
+		has_shield,
+		is_rare_boss
+	)
 	var mob_title_str: String = str(main_spec.get("title", "守财亡骸"))
 
-	if state.is_boss:
+	if is_rare_boss:
+		var rem_s: float = maxf(0.0, 30.0 - state.rare_boss_timer)
+		label_mob_name.text = "契约大执政官 (%.1fs)" % rem_s
+		label_mob_name.add_theme_color_override("font_color", Color.html("#D43F3A"))
+		main_card.position = BOSS_CARD_POS
+		main_card.size = BOSS_CARD_SIZE
+		main_card.setup_role(MonsterCardViewScript.CardRole.BOSS_MOB, "契约大执政官")
+		main_card.apply_visual_spec(main_spec)
+		queue_card_1.visible = false
+		queue_card_2.visible = false
+		if btn_retreat_rare_boss != null:
+			btn_retreat_rare_boss.visible = true
+	elif state.is_boss:
+		if btn_retreat_rare_boss != null:
+			btn_retreat_rare_boss.visible = false
 		label_mob_name.text = mob_title_str
 		label_mob_name.add_theme_color_override("font_color", ThemePaletteScript.color_old_gold_bright())
 		main_card.position = BOSS_CARD_POS
@@ -1059,6 +1247,8 @@ func refresh_hud() -> void:
 		queue_card_1.visible = false
 		queue_card_2.visible = false
 	else:
+		if btn_retreat_rare_boss != null:
+			btn_retreat_rare_boss.visible = false
 		label_mob_name.text = mob_title_str
 		var name_col: Color = ThemePaletteScript.color_old_gold_bright() if bool(main_spec.get("is_elite", false)) else ThemePaletteScript.color_ash_gray()
 		label_mob_name.add_theme_color_override("font_color", name_col)
@@ -1116,12 +1306,14 @@ func refresh_hud() -> void:
 		NumScript.format_num(next_cost_log)
 	]
 
-	# 5. 六槽装备只读映射
+	# 5. 六槽装备只读映射 (支持太古/具名木刻幻化)
 	if not (_demo_wp09_v9 and _demo_vfx_fired):
 		for slot_key: String in SimStateScript.EQUIP_SLOTS:
 			var slot_view: EquipSlotViewScript = equip_slot_views.get(slot_key, null) as EquipSlotViewScript
 			if slot_view == null:
 				continue
+			var t_id: String = state.get_transmog(slot_key)
+			slot_view.set_transmog_id(t_id)
 			var eq_item: ItemInstanceScript = state.equipped.get(slot_key, null) as ItemInstanceScript
 			if eq_item == null:
 				slot_view.set_item_state(false, -1, 0)
@@ -1136,6 +1328,10 @@ func refresh_hud() -> void:
 	# 7. D5 系统抽屉只读刷新
 	if systems_drawer != null and systems_drawer.visible:
 		systems_drawer.refresh_view()
+
+	# 8. 图鉴抽屉只读刷新
+	if codex_panel != null and codex_panel.visible:
+		codex_panel.refresh_view()
 
 func _on_btn_upgrade_atk_pressed() -> void:
 	if game_ref != null:
@@ -1355,6 +1551,7 @@ func _on_btn_systems_pressed() -> void:
 func open_systems_drawer(tab_idx: int = -1) -> void:
 	close_equip_compare_panel()
 	close_inventory_panel()
+	close_codex_panel()
 	if systems_drawer != null:
 		systems_drawer.open_tab(tab_idx)
 
@@ -1373,12 +1570,55 @@ func _on_btn_inventory_pressed() -> void:
 func open_inventory_panel(tab_idx: int = -1) -> void:
 	close_equip_compare_panel()
 	close_systems_drawer()
+	close_codex_panel()
 	if inventory_panel != null:
 		inventory_panel.open_tab(tab_idx)
 
 func close_inventory_panel() -> void:
 	if inventory_panel != null:
 		inventory_panel.close_drawer()
+
+func _on_btn_codex_pressed() -> void:
+	if codex_panel == null:
+		return
+	if codex_panel.visible:
+		close_codex_panel()
+	else:
+		open_codex_panel(-1)
+
+func open_codex_panel(tab_idx: int = -1) -> void:
+	close_equip_compare_panel()
+	close_systems_drawer()
+	close_inventory_panel()
+	if codex_panel != null:
+		codex_panel.open_tab(tab_idx)
+
+func close_codex_panel() -> void:
+	if codex_panel != null:
+		codex_panel.close_drawer()
+
+func _on_retreat_rare_boss_pressed() -> void:
+	if game_ref != null:
+		game_ref.request_abort_rare_boss()
+
+func _on_return_report_requested(report: Dictionary) -> void:
+	if return_report_modal != null and not report.is_empty():
+		return_report_modal.show_report(report)
+
+func _on_return_report_claimed(summary: Dictionary) -> void:
+	if sfx_mixer != null and vfx_manager != null:
+		sfx_mixer.request_play_sound("prestige_bell", vfx_manager.budget)
+	if loot_fountain != null and main_card != null:
+		var card_center: Vector2 = main_card.position + main_card.size * 0.5
+		var uniques_count: int = (summary.get("new_uniques", []) as Array).size()
+		var runes_count: int = int(summary.get("new_summon_runes", 0))
+		var total_burst: int = mini(12, maxi(4, uniques_count + runes_count + 3))
+		for i: int in range(total_burst):
+			var r_tier: int = 4 if i < runes_count else (3 if i < runes_count + uniques_count else 1)
+			loot_fountain.spawn_drop(card_center, r_tier, 1.25, 50)
+	if floating_text != null and main_card != null:
+		var c_pos: Vector2 = main_card.position + main_card.size * 0.5
+		floating_text.add_floating_text("离线结算完成！", c_pos + Vector2(0.0, -20.0), ThemePaletteScript.color_old_gold_bright(), true)
 
 func _on_wall_hint_banner_gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
