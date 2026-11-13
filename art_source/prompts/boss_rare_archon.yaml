@@ -1,0 +1,45 @@
+# 《桌面破坏神》WP-P2-ART 正式资产提示词卡 #13: 稀有召唤 Boss — 契约大执政官 (深渊执政官)
+# 依据: docs/03 §02.3 (Boss 墨黑占比 50%~60%) | docs/04 §1.1 & §4.1
+asset_id: boss_rare_archon
+target_export_name: boss_rare_archon_v01.png
+category: boss
+family: abyss
+accent_family: abyss
+accent_hex: "#6A1B3A"
+gilding_hex: "#C9A04E"
+default_mode: anchor
+model: gpt-image-2.6-flare
+quality: medium
+size: "1024x1536"
+master_output_size: "416x520"
+dominant_silhouette_feature: "monumental overhead balance-scale judgement yoke crowning a floating chain-bound throne"
+wealth_motif: "colossal gilded balance pans, gold-leaf throne padlock seals, and sovereign debt chains"
+
+subject_prompt: >-
+  Vertical portrait composition for a 4:5 boss master ratio. A towering, monumental Covenant High Archon rare
+  boss enthroned front-facing in strict symmetrical majesty upon a suspended iron-and-bone judgement seat, full
+  silhouette completely visible from the colossal overhead balance-scale yoke beam down to the tapered iron
+  throne spire-foot floating in mid-air, surrounded by clean flat medium gray (#808080) margin on all four sides
+  (never touching any image edge, zero floor or steps). Balanced monumental woodcut ink-mass tuned for a Boss
+  (50% to 56% deep ink-black shadow mass balanced by 44% to 50% wide, clean, unshaded warm bone-white carved
+  plates): wide unshaded warm bone-white carved surfaces cover the broad judge robe thigh-pleats, tall throne
+  side-pillars, wide shoulder pauldrons, gauntleted forearms, crowned death-mask, lower spire ribs, and overhead
+  scale beam (leave lit bone-white plates wide and solid white without dense black hatching), contrasted against
+  bold deep ink-black inner throne recesses and crisp woodcut shadow folds (zero smooth metallic gradients).
+  Wealth corruption motif: bright gold-leaf
+  suspended twin weighing pans, a massive central chest padlock clasp, and short gold chain links (~6% total
+  gold-leaf area). Muted deep burgundy-plum ink accent strictly on the inner judge mantle lapel (~4% area).
+
+hard_constraints: >-
+  Single cohesive boss-and-floating-throne silhouette isolated on a completely flat, uniform medium gray (#808080)
+  background—strictly NO arch frame, NO border, NO ground platform, NO floating detached debris. Keep warm
+  bone-white carved plates wide enough (~46% bone-white vs ~54% ink-black) so black ink never exceeds 58%, with
+  ZERO gray midtone fills and ZERO fine copperplate hatching. Strictly ZERO text, letters, numerals, runes, or
+  engraved writing anywhere.
+
+rejection_history:
+  - attempt: 1
+    file: art_source/rejected/boss_rare_archon/gen_bbdd92519d915aec_R-MASS_63.56pct.png
+    reason_code: R-MASS
+    measured: "V4_INK_MASS=63.56% (> 60.0% boss cap)"
+    fix: "Expanded wide unshaded warm bone-white carved plates on judge robe pleats, throne pillars, and lower spire to bring ink mass into 50%-60%."

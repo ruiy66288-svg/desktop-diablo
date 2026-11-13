@@ -1,0 +1,35 @@
+# 《桌面破坏神》WP-P2-ART 正式资产提示词卡 #14: 专属暗金武器图标 — 雷霆断债巨剑 (uniq_weapon_thunder_blade)
+# 依据: docs/03 §02.4 (武器严格 45° 对角线构图，墨黑 30%~50%) | docs/04 §3 #4
+asset_id: uniq_weapon_thunder_blade
+target_export_name: uniq_weapon_thunder_blade_v01.png
+category: icon
+slot: weapon
+accent_family: demon
+accent_hex: "#7A0F14"
+gilding_hex: "#C9A04E"
+default_mode: anchor
+model: gpt-image-2.6-flare
+quality: medium
+size: "1024x1024"
+master_output_size: "96x96"
+view_rule: "strict 45-degree diagonal orientation from lower-left pommel to upper-right tip"
+wealth_motif: "gold-leaf shattered-shackle crossguard collar and coin pommel"
+
+subject_prompt: >-
+  Square 1:1 icon composition. A single unique legendary broadsword—the Thunder Debt-Breaker Blade—placed strictly
+  along the 45-degree diagonal from lower-left pommel to upper-right point, centered with generous flat medium
+  gray (#808080) margin on all four sides (occupying about 82% of the square frame, never touching any edge).
+  Distinctive unique silhouette: a wide heavy zig-zag lightning-stepped broadsword blade with bold angular
+  saw-step notches and a forked storm-horn crossguard. Bright bone-white-dominant coarse woodcut icon: about 56%
+  to 62% of the sword's opaque area is wide, clean, flat unshaded warm bone-white carved bevels along the wide
+  zig-zag blade planes and forked guard (rendered purely as flat bone-white woodcut blocks with 3 or 4 bold
+  parallel chisel strokes, zero smooth metallic gradients), balanced against a thick closed deep ink-black outer
+  contour and a solid black central lightning-channel fuller (~36% to 44% total black ink). Wealth motif: a
+  compact gold-leaf broken-padlock collar at the guard center and a round blank gold coin pommel (~5% gold-leaf
+  area). One small faceted dark blood-crimson ink gem set in the ricasso (~2% area).
+
+hard_constraints: >-
+  Completely flat, uniform medium gray (#808080) background with nothing else—strictly NO electric glow, NO
+  floating lightning bolts detached from the sword, NO sparks, NO icon border, NO shadow. Keep warm bone-white
+  blade planes wide and dominant (~58% bone-white vs ~40% ink-black) with ZERO gray midtones and ZERO text,
+  letters, or runes on the blade.

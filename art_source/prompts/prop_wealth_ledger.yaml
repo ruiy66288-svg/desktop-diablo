@@ -1,0 +1,35 @@
+# 《桌面破坏神》WP-P2-ART 正式资产提示词卡 #17: 财富契约道具插图 — 金币堆与债契账簿 (prop_wealth_ledger)
+# 依据: docs/03 §02.4 | docs/04 §3 #5 (96x96 四通道财富道具插画，镀金 B <= 12%)
+asset_id: prop_wealth_ledger
+target_export_name: prop_wealth_ledger_v01.png
+category: icon
+slot: prop
+accent_family: demon
+accent_hex: "#7A0F14"
+gilding_hex: "#C9A04E"
+default_mode: anchor
+model: gpt-image-2.6-flare
+quality: medium
+size: "1024x1024"
+master_output_size: "96x96"
+view_rule: "three-quarter (3/4) tabletop icon view, closed padlocked ledger with small coin stack"
+wealth_motif: "small neat stack of 4 blank gold-leaf coins and a gilded padlock clasp on a bone-parchment ledger"
+
+subject_prompt: >-
+  Square 1:1 icon composition. A single compact still-life emblem of a thick closed medieval debt-covenant ledger
+  book bound in carved bone-parchment boards with heavy iron corner straps and a front padlock clasp, accompanied
+  by one small neat stack of four chunky blank gold coins tucked tightly against its lower-right corner (forming
+  one cohesive connected silhouette), shown in three-quarter (3/4) perspective centered on a flat medium gray
+  (#808080) background (occupying about 80% of the square frame, never touching any edge). Bright
+  bone-white-dominant coarse woodcut icon: about 56% to 62% of the emblem's opaque area is wide, clean, flat
+  unshaded warm bone-white carved surfaces across the broad front book board, thick closed page-edge block, and
+  raised spine bands, balanced against thick deep ink-black contours and bold black iron strap shadows (~36% to
+  44% total black ink). Wealth motif strictly capped under 9% area: bright gold-leaf ONLY on the small front
+  padlock clasp and the compact 4-coin stack at the corner (the entire book cover and pages are warm bone-white,
+  NOT gold). A small dark blood-crimson blank ribbon bookmark tab peeks from the bottom page edge (~3% area).
+
+hard_constraints: >-
+  Completely flat, uniform medium gray (#808080) background—strictly NO table surface, NO ground shadow, NO loose
+  scattered coins detached from the book, NO icon frame. Keep warm bone-white book boards wide and dominant (~58%
+  bone-white vs ~40% ink-black), keep gold-leaf strictly small (<9% area), and ZERO gray midtone fills. The book
+  cover and coins must be 100% blank geometric shapes with ZERO text, title letters, numbers, or symbols.

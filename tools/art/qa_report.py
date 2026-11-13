@@ -143,14 +143,133 @@ QA_SPECS: dict[str, QaThresholds] = {
 }
 
 
+def evaluate_hatch_texture(
+    packed_path: Path,
+    raw_path: Path | None = None,
+) -> dict[str, Any]:
+    """
+    针对 docs/04 §3 #6 256x256 单通道 (R/L) 无缝二值木刻排线平铺底纹的 5 项量化质检。
+    """
+    pil_img = Image.open(packed_path)
+    img_mode = pil_img.mode
+    gray = np.array(pil_img.convert("L"), dtype=np.uint8)
+    h, w = gray.shape[:2]
+
+    checks: list[CheckItemResult] = []
+
+    # 1. 尺寸与单通道格式 (256x256, mode="L")
+    dim_ok = (img_mode == "L") and (w == 256) and (h == 256)
+    checks.append(
+        CheckItemResult(
+            code="DIM_SINGLE_CH",
+            name="256x256 单通道 (L/R8) 无损格式",
+            passed=dim_ok,
+            measured=f"{w}x{h} ({img_mode})",
+            threshold="256x256 (L)",
+            details={"width": w, "height": h, "mode": img_mode},
+        )
+    )
+
+    # 2. 严格二值化检测 (仅含 0 与 255，杜绝抗锯齿灰阶糊团)
+    uniq_vals = sorted(int(v) for v in np.unique(gray))
+    bin_ok = set(uniq_vals).issubset({0, 255}) and len(uniq_vals) == 2
+    checks.append(
+        CheckItemResult(
+            code="BINARY_TWO_TONE",
+            name="严格二值化木刻刀痕 (仅 0 与 255)",
+            passed=bin_ok,
+            measured=f"unique={uniq_vals[:6]}",
+            threshold="unique == [0, 255]",
+            details={"unique_values": uniq_vals},
+        )
+    )
+
+    # 3. 排线占空比 (18% ~ 58%)
+    hatch_ratio = float((gray > 127).sum()) / float(max(1, h * w))
+    duty_ok = 0.18 <= hatch_ratio <= 0.58
+    checks.append(
+        CheckItemResult(
+            code="HATCH_DUTY",
+            name="木刻排线刻痕面积占空比",
+            passed=duty_ok,
+            measured=f"{hatch_ratio * 100:.2f}%",
+            threshold="18.0% ~ 58.0%",
+            details={"hatch_ratio": round(hatch_ratio, 4)},
+        )
+    )
+
+    # 4. 四边无缝平铺连续性 (上下接缝与左右接缝跳变率不得显著高于内部相邻像素跳变率)
+    b = (gray > 127).astype(np.int32)
+    interior_x_diff = float(np.mean(np.abs(b[:, 1:] - b[:, :-1])))
+    interior_y_diff = float(np.mean(np.abs(b[1:, :] - b[:-1, :])))
+    seam_x_diff = float(np.mean(np.abs(b[:, 0] - b[:, -1])))
+    seam_y_diff = float(np.mean(np.abs(b[0, :] - b[-1, :])))
+    excess_x = max(0.0, seam_x_diff - interior_x_diff)
+    excess_y = max(0.0, seam_y_diff - interior_y_diff)
+    seamless_ok = (excess_x <= 0.05) and (excess_y <= 0.05)
+    checks.append(
+        CheckItemResult(
+            code="SEAMLESS_TILE",
+            name="四向平铺接缝连续性检测",
+            passed=seamless_ok,
+            measured=f"seamX={seam_x_diff*100:.1f}%(+{excess_x*100:.1f}%), seamY={seam_y_diff*100:.1f}%(+{excess_y*100:.1f}%)",
+            threshold="接缝跳变超额 <= 5.0%",
+            details={
+                "seam_x_diff": round(seam_x_diff, 4),
+                "interior_x_diff": round(interior_x_diff, 4),
+                "seam_y_diff": round(seam_y_diff, 4),
+                "interior_y_diff": round(interior_y_diff, 4),
+            },
+        )
+    )
+
+    # 5. 刻刀线宽粗度与零碎噪点检测
+    fg_u8 = (gray > 127).astype(np.uint8)
+    dist = cv2.distanceTransform(fg_u8, cv2.DIST_L2, 3)
+    skel = skeletonize(fg_u8 > 0)
+    widths = (dist[skel] * 2.0) if int(skel.sum()) > 0 else np.array([0.0], dtype=np.float32)
+    med_w = float(np.median(widths))
+    n_lbl, _, st, _ = cv2.connectedComponentsWithStats(fg_u8, connectivity=8)
+    tiny_specks = sum(1 for idx in range(1, n_lbl) if int(st[idx, cv2.CC_STAT_AREA]) < 4)
+    stroke_ok = (med_w >= 1.5) and (tiny_specks == 0)
+    checks.append(
+        CheckItemResult(
+            code="STROKE_COARSENESS",
+            name="排线中位刀宽与零碎杂点检测",
+            passed=stroke_ok,
+            measured=f"中位线宽={med_w:.2f}px, <4px碎点={tiny_specks}",
+            threshold="中位线宽>=1.50px, <4px碎点=0",
+            details={"median_stroke_width_px": round(med_w, 3), "tiny_specks_lt_4px": tiny_specks},
+        )
+    )
+
+    overall_pass = all(c.passed for c in checks)
+    return {
+        "tool": f"{TOOL_NAME}@{TOOL_VERSION}",
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "packed_path": str(packed_path),
+        "packed_sha256": compute_sha256(packed_path),
+        "raw_path": str(raw_path) if raw_path else None,
+        "raw_sha256": compute_sha256(raw_path) if (raw_path and raw_path.exists()) else None,
+        "category": "texture",
+        "accent_family": "none",
+        "qa_status": "PASS" if overall_pass else "FAIL",
+        "passed_count": sum(1 for c in checks if c.passed),
+        "total_checks": len(checks),
+        "checks": [asdict(c) for c in checks],
+    }
+
+
 def evaluate_packed_asset(
     packed_path: Path,
-    category: CategoryType = "monster",
+    category: str = "monster",
     accent_family: AccentFamilyType = "auto",
     raw_path: Path | None = None,
 ) -> dict[str, Any]:
     if not packed_path.exists():
-        raise FileNotFoundError(f"找不到待质检的四通道 PNG 文件: {packed_path}")
+        raise FileNotFoundError(f"找不到待质检的 PNG 文件: {packed_path}")
+    if category == "texture":
+        return evaluate_hatch_texture(packed_path=packed_path, raw_path=raw_path)
     if category not in QA_SPECS:
         raise ValueError(f"不支持的资产类别: {category}")
 
@@ -433,7 +552,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
         "--category",
         type=str,
         default="monster",
-        choices=["monster", "boss", "icon", "prop"],
+        choices=["monster", "boss", "icon", "prop", "texture"],
         help="资产类别 (默认: monster)",
     )
     parser.add_argument(

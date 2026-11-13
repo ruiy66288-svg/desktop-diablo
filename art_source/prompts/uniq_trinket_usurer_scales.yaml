@@ -1,0 +1,35 @@
+# 《桌面破坏神》WP-P2-ART 正式资产提示词卡 #15: 专属暗金饰品图标 — 高利贷天平圣契 (uniq_trinket_usurer_scales)
+# 依据: docs/03 §02.4 (墨黑 30%~50%) | docs/04 §3 #4
+asset_id: uniq_trinket_usurer_scales
+target_export_name: uniq_trinket_usurer_scales_v01.png
+category: icon
+slot: trinket
+accent_family: fallen_saint
+accent_hex: "#B08D57"
+gilding_hex: "#C9A04E"
+default_mode: anchor
+model: gpt-image-2.6-flare
+quality: medium
+size: "1024x1024"
+master_output_size: "96x96"
+view_rule: "frontal iconic medallion-reliquary view, centered with generous margin"
+wealth_motif: "twin gold-leaf balance pans holding tiny blank gold coins on a bone reliquary seal"
+
+subject_prompt: >-
+  Square 1:1 icon composition. A single unique legendary trinket talisman—the Usurer's Scales Covenant
+  Reliquary—shown front-on as a chunky octagonal carved bone-and-iron seal medallion surmounted by a rigid
+  miniature balance beam with two suspended weighing pans, centered with generous flat medium gray (#808080)
+  margin on all four sides (occupying about 80% of the square frame, never touching any edge). Bright
+  bone-white-dominant coarse woodcut icon: about 56% to 62% of the talisman's opaque area is wide, clean, flat
+  unshaded warm bone-white carved surfaces across the thick octagonal bone tablet body, central pillar, and
+  crossbar (leave lit bone-white surfaces clean and solid white without dense stripes), balanced against a thick
+  closed deep ink-black outer contour and bold black recessed bevels (~36% to 44% total black ink). Wealth
+  motif: the two small suspended weighing pans and a small central keyhole lock-plate rendered in bright
+  gold-leaf (~6% gold-leaf area—the main medallion body is warm bone-white, NOT gold). One small muted antique
+  ochre-amber wax disc set at the base (~2% area).
+
+hard_constraints: >-
+  Completely flat, uniform medium gray (#808080) background—strictly NO hanging neck chain, NO glow, NO border
+  frame, NO drop shadow. Keep warm bone-white planes wide and dominant (~58% bone-white vs ~40% ink-black), keep
+  gold-leaf strictly to the two small pans and keyhole (<9%), and ZERO gray midtone fills. Strictly ZERO text,
+  letters, numbers, Roman numerals, or runes.

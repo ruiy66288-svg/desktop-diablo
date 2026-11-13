@@ -1,0 +1,34 @@
+# 《桌面破坏神》WP-P2-ART 正式资产提示词卡 #16: 收藏召唤符文图标 — 深渊召唤石刻符文 (col_rune_abyss_summon)
+# 依据: docs/03 §02.4 | docs/04 §3 #4 | #107 严禁 AI 伪文字，纯几何楔形刻痕
+asset_id: col_rune_abyss_summon
+target_export_name: col_rune_abyss_summon_v01.png
+category: icon
+slot: collectible
+accent_family: abyss
+accent_hex: "#6A1B3A"
+gilding_hex: "#C9A04E"
+default_mode: anchor
+model: gpt-image-2.6-flare
+quality: medium
+size: "1024x1024"
+master_output_size: "96x96"
+view_rule: "frontal octagonal chiseled stone token with pure symmetrical geometric diamond/wedge grooves"
+wealth_motif: "four small gold-leaf corner lock-rivets and geometric diamond bezel"
+
+subject_prompt: >-
+  Square 1:1 icon composition. A single heavy octagonal chiseled bone-stone summoning tablet token, shown
+  front-on and centered with generous flat medium gray (#808080) margin on all four sides (occupying about 80%
+  of the square frame, never touching any edge). Strictly PURE GEOMETRIC SYMMETRY with ZERO writing: the broad
+  flat face of the octagonal bone-white stone slab features only a crisp symmetrical nested diamond-and-chevron
+  geometric relief motif made of 4 bold straight wedge-cut grooves radiating around a central rhombus socket.
+  Bright bone-white-dominant coarse woodcut icon: about 56% to 62% of the tablet's opaque area is wide, clean,
+  flat unshaded warm bone-white chiseled stone planes, balanced against a thick closed deep ink-black outer
+  chamfer contour and bold solid black geometric diamond groove shadows (~36% to 44% total black ink). Set inside
+  the central rhombus socket is a chunky flat-cut deep burgundy-plum gemstone (~4% area), accented by four small
+  plain round gold-leaf corner rivets (~4% gold-leaf area).
+
+hard_constraints: >-
+  Completely flat, uniform medium gray (#808080) background—strictly NO glow, NO floating particles, NO border
+  box, NO ground shadow. STRICTLY FORBIDDEN: NO runes, NO Elder Futhark, NO letters, NO alphabet characters, NO
+  calligraphy, NO pseudo-script, NO numbers—only pure symmetrical straight-edged diamond and triangle geometric
+  grooves! Keep warm bone-white stone dominant (~58% bone-white vs ~40% ink-black) with ZERO gray midtone fills.

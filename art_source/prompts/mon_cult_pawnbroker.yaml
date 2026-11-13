@@ -1,0 +1,39 @@
+# 《桌面破坏神》WP-P2-ART 正式资产提示词卡 #12: 族群 5 普通怪物 — 典当教团 (深渊族)
+# 依据: docs/03 §02.2 | docs/04 §1.1 & §4.1 | docs/verification_log.md [风格方向板 v1] 纠偏 1–5
+asset_id: mon_cult_pawnbroker
+target_export_name: mon_cult_pawnbroker_v01.png
+category: monster
+family: abyss
+accent_family: abyss
+accent_hex: "#6A1B3A"
+gilding_hex: "#C9A04E"
+default_mode: anchor
+model: gpt-image-2.6-flare
+quality: medium
+size: "1024x1536"
+master_output_size: "352x440"
+dominant_silhouette_feature: "tall pointed bone-white cultist mask-hood and raised heavy coin-stamping die hammer"
+wealth_motif: "blank pawn-ticket plaques on gold-leaf chains and a gilded cylindrical coin-minting die stamp"
+
+subject_prompt: >-
+  Vertical portrait composition for a 4:5 master ratio. A single masked abyssal pawnbroker inquisitor of the
+  Abyss Pawn-Cult family standing front-facing in a symmetrical iconic tarot pose, full body completely visible
+  from the tip of a tall pointed bone-white hood down to heavy cuffed boots with generous empty flat medium gray
+  (#808080) margin on all four sides (never cropped; boots floating cleanly with zero ground strip). Elbows and
+  legs are clearly separated from the belted robe with open gray negative space so the silhouette reads sharply
+  at 72x90 pixel scale. One dominant silhouette feature only: the tall pointed faceless bone-mask hood paired
+  with a heavy cylindrical coin-minting die hammer held upright in the right hand, while a closed blank iron-bound
+  ledger hangs from the left hip. Bright bone-white-dominant coarse woodcut: about 56% to 62% of the figure's
+  interior is wide, clean, flat unshaded warm bone-white carved planes across the pointed hood, masked face-plate,
+  broad scapular robe, gauntlets, blank rectangular pawn-tag plates, and boots (leave lit bone-white areas clean
+  and unhatched), balanced against bold deep ink-black contours and solid black shadow folds (~38% to 46% total
+  black ink). Wealth corruption motif: bright gold-leaf padlocked pawn chains across the chest and a gleaming
+  gold-leaf striking face on the coin-minting die (~6% gold-leaf area). Tiny muted deep burgundy-plum ink accent
+  on the narrow collar stole (~3% area).
+
+hard_constraints: >-
+  Isolated full-body subject floating on a completely flat, uniform medium gray (#808080) background—strictly
+  NO paper background, NO frame, NO floor line, NO drop shadow. Keep warm bone-white planes wide and dominant
+  (~58% bone-white vs ~42% ink-black) with ZERO gray midtone fills and ZERO fine copperplate hatching. All pawn
+  plaques, ledger covers, and coin dies must be 100% blank geometric shapes with ZERO text, letters, numbers,
+  runes, or symbols.

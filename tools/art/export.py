@@ -127,7 +127,7 @@ def export_packed_asset(
     packed_path: Path,
     dest_path: Path,
     asset_id: str,
-    category: CategoryType,
+    category: str,
     version: str,
     prompt_file: str,
     source_type: str,
@@ -138,6 +138,7 @@ def export_packed_asset(
     accent_family: AccentFamilyType = "auto",
     reviewer: str = "auto_qa",
     notes: str = "",
+    tool_chain_override: str | None = None,
     manifest_path: Path = ROOT_DIR / "art_source" / "manifest.csv",
     licenses_path: Path = ROOT_DIR / "art_source" / "licenses" / "LICENSES.csv",
     project_root: Path = ROOT_DIR,
@@ -206,7 +207,8 @@ def export_packed_asset(
     import_path.write_text(import_content, encoding="utf-8", newline="\n")
 
     # 5. 幂等更新 manifest.csv
-    tool_chain = f"{PROC_NAME}@{PROC_VER}+{QA_NAME}@{QA_VER}+{TOOL_NAME}@{TOOL_VERSION}"
+    default_proc = "hatch_from_height.py@1.0.0" if category == "texture" else f"{PROC_NAME}@{PROC_VER}"
+    tool_chain = tool_chain_override or f"{default_proc}+{QA_NAME}@{QA_VER}+{TOOL_NAME}@{TOOL_VERSION}"
     now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     existing_rows: list[dict[str, str]] = []
@@ -273,7 +275,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
         "--category",
         type=str,
         default="monster",
-        choices=["monster", "boss", "icon", "prop"],
+        choices=["monster", "boss", "icon", "prop", "texture"],
         help="资产类别 (默认: monster)",
     )
     parser.add_argument("--version", type=str, default="v01", help="版本号 (如 v01)")

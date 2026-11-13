@@ -1,0 +1,38 @@
+# 《桌面破坏神》WP-P2-ART 正式资产提示词卡 #11: 族群 4 普通怪物 — 镀金圣像 (堕圣族)
+# 依据: docs/03 §02.2 | docs/04 §1.1 & §4.1 | docs/verification_log.md [风格方向板 v1] 纠偏 1–5
+asset_id: mon_idol_scales
+target_export_name: mon_idol_scales_v01.png
+category: monster
+family: fallen_saint
+accent_family: fallen_saint
+accent_hex: "#B08D57"
+gilding_hex: "#C9A04E"
+default_mode: anchor
+model: gpt-image-2.6-flare
+quality: medium
+size: "1024x1536"
+master_output_size: "352x440"
+dominant_silhouette_feature: "raised two-pan usurer balance scale held across the chest (single dominant silhouette feature)"
+wealth_motif: "flaking gold-leaf plating peeling off one shoulder and face, plus two small gold-leaf balance pans"
+
+subject_prompt: >-
+  Vertical portrait composition for a 4:5 master ratio. A single cracked carved-stone fallen saint idol of the
+  Fallen Saint family standing front-facing in a rigid symmetrical tarot pose, full body completely visible from
+  chipped stone mitre-crest down to bare carved stone feet with generous empty flat medium gray (#808080) margin
+  on all four sides (never cropped at top, bottom, or sides; feet floating cleanly in mid-air with zero pedestal
+  or ground line). Arms and legs have clear open gray negative space separating them from the narrow robed torso
+  so the silhouette reads cleanly at 72x90 pixel scale. One dominant silhouette feature only: a wide rigid
+  horizontal iron balance beam with two small suspended weighing pans held solemnly out to the sides (no wings,
+  no halo ring, no staff). Bright bone-white-dominant coarse woodcut: about 56% to 62% of the figure's interior
+  is wide, clean, flat unshaded warm bone-white carved stone planes across the fractured saintly face, pleated
+  tunic, forearms, and shin folds (leave lit bone-white planes clean and solid white without dense black tick
+  hatching), balanced against bold deep ink-black outer contours and crisp black chisel recesses (~38% to 46%
+  total black ink). Wealth corruption motif: bright metallic gold-leaf plating flaking and peeling away from one
+  half of the cheek/shoulder and coating the two small weighing pans (~6% total gold-leaf area). Tiny muted
+  dark antique-ochre sash knot at the waist (~2% area).
+
+hard_constraints: >-
+  Isolated full-body subject floating on a completely flat, uniform medium gray (#808080) background—strictly
+  NO bone-white paper card background, NO halo circle, NO pedestal, NO border, NO ground shadow. Keep warm
+  bone-white stone planes wide and dominant (~58% bone-white vs ~42% ink-black) with ZERO smooth gray midtone
+  fills and ZERO fine copperplate crosshatching. Strictly ZERO text, letters, numbers, runes, or engraved marks.

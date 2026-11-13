@@ -1,0 +1,74 @@
+{
+  "tool": "qa_report.py@1.1.0",
+  "generated_at": "2026-11-13T05:16:04.973176+00:00",
+  "packed_path": "tools\\out\\wp_p2_art\\tex_woodcut_hatch_256_packed.png",
+  "packed_sha256": "ba52943d0bbabf0191cd6532cfb5671ad82a6cca931c90677ed6363e9ff542d0",
+  "raw_path": "art_source\\raw\\tex_woodcut_hatch_256\\height_stone_parchment_256.png",
+  "raw_sha256": "40cb0b76fdbbd7befec9f0eb1bd9e6dce70c7f71d61ca031e723680cf449f17e",
+  "category": "texture",
+  "accent_family": "none",
+  "qa_status": "PASS",
+  "passed_count": 5,
+  "total_checks": 5,
+  "checks": [
+    {
+      "code": "DIM_SINGLE_CH",
+      "name": "256x256 单通道 (L/R8) 无损格式",
+      "passed": true,
+      "measured": "256x256 (L)",
+      "threshold": "256x256 (L)",
+      "details": {
+        "width": 256,
+        "height": 256,
+        "mode": "L"
+      }
+    },
+    {
+      "code": "BINARY_TWO_TONE",
+      "name": "严格二值化木刻刀痕 (仅 0 与 255)",
+      "passed": true,
+      "measured": "unique=[0, 255]",
+      "threshold": "unique == [0, 255]",
+      "details": {
+        "unique_values": [
+          0,
+          255
+        ]
+      }
+    },
+    {
+      "code": "HATCH_DUTY",
+      "name": "木刻排线刻痕面积占空比",
+      "passed": true,
+      "measured": "36.64%",
+      "threshold": "18.0% ~ 58.0%",
+      "details": {
+        "hatch_ratio": 0.3664
+      }
+    },
+    {
+      "code": "SEAMLESS_TILE",
+      "name": "四向平铺接缝连续性检测",
+      "passed": true,
+      "measured": "seamX=15.2%(+0.0%), seamY=14.5%(+0.0%)",
+      "threshold": "接缝跳变超额 <= 5.0%",
+      "details": {
+        "seam_x_diff": 0.1523,
+        "interior_x_diff": 0.1563,
+        "seam_y_diff": 0.1445,
+        "interior_y_diff": 0.1563
+      }
+    },
+    {
+      "code": "STROKE_COARSENESS",
+      "name": "排线中位刀宽与零碎杂点检测",
+      "passed": true,
+      "measured": "中位线宽=4.65px, <4px碎点=0",
+      "threshold": "中位线宽>=1.50px, <4px碎点=0",
+      "details": {
+        "median_stroke_width_px": 4.649,
+        "tiny_specks_lt_4px": 0
+      }
+    }
+  ]
+}
