@@ -30,4 +30,5 @@ desc_template = "击杀后叠加攻速增益，无击杀超时清零"
 is_passive = false
 trigger = SubResource("Resource_trg")
 effect = SubResource("Resource_eff")
+counter_tags = Array[String](["multi_hit", "high_atk_speed", "fast_kill"]) ; 来源: 02号文件 §6.2 克制标签
 budget_per_tick = 10 ; 来源: 02号文件 §2.3 — 每词条每 tick 预算

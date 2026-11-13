@@ -59,6 +59,10 @@ func step() -> int:
 	if state.has_tech_effect("auto_buy_atk") and not state.is_saving_for_toll():
 		state.upgrades.buy_atk_upgrades_bulk(state, state.balance.auto_buy_max_per_tick)
 
+	# 自动化分支「自动还债」：金币余额自动偿还活跃借款（W 不变，仅把债转成还清升阶）
+	if state.has_tech_effect("auto_repay") and state.debt_total != NumScript.ZERO and state.gold != NumScript.ZERO:
+		state.repay_debt_with_gold(state.gold)
+
 	var tick_dt: float = state.balance.sim_tick_dt
 	state.tick_count += 1
 	state.elapsed_seconds += tick_dt
@@ -72,6 +76,7 @@ func step() -> int:
 			var rate_log: float = NumScript.div(pending_souls, NumScript.from_float(state.elapsed_seconds))
 			state.peak_soul_rate_log = NumScript.max_num(state.peak_soul_rate_log, rate_log)
 
+	state.update_attention_signals(queue)
 	queue.compact_same_type(state.balance.event_compact_threshold)
 	return _last_step_kills
 
@@ -81,6 +86,10 @@ func _run_affix_pipeline() -> int:
 	var resolver: AffixResolverScript = state.resolver
 	if resolver == null or not resolver.has_listeners():
 		return 0
+
+	# TIMER 事件：仅在存在 TIMER 触发词条时每 tick 注入 1 个（处刑之锤 2.5s、暗金雨 3min 等用 COUNTER 累计）
+	if resolver.has_listener_for(int(SimEventScript.T.TIMER)):
+		queue.push_back(SimEventScript.new(SimEventScript.T.TIMER, 0.0, 1))
 
 	resolver.collect_processed = true
 	resolver.resolve_tick(state, queue, null)

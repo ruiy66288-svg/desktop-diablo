@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="AffixDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://simulation/affix/AffixDef.gd" id="1_aff"]
+
+[resource]
+script = ExtResource("1_aff")
+id = "usurer_ward"
+name = "债契护印"
+desc_template = "净负债时伤害 +50%，吞金吞噬量 -50%"
+is_passive = true
+stat_key = "debt_damage_bonus"
+stat_val = 0.5 ; 来源: 02号文件 §6.2 克制吞金
+extra_stats = {
+"eat_reduction": 0.5
+}
+counter_tags = Array[String](["gold", "debt"]) ; 来源: 02号文件 §6.2 克制标签

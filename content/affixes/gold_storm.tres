@@ -1,0 +1,31 @@
+[gd_resource type="Resource" script_class="AffixDef" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://simulation/affix/AffixDef.gd" id="1_aff"]
+[ext_resource type="Script" path="res://simulation/affix/TriggerDef.gd" id="2_trg"]
+[ext_resource type="Script" path="res://simulation/affix/EffectDef.gd" id="3_eff"]
+
+[sub_resource type="Resource" id="Resource_trg"]
+script = ExtResource("2_trg")
+event_type = 5 ; 来源: 02号文件 §6.2 金币风暴 (SMELT 触发) (触发事件类型)
+mode = 0
+threshold = 1
+chance = 1.0
+icd_ticks = 0
+
+[sub_resource type="Resource" id="Resource_eff"]
+script = ExtResource("3_eff")
+vfx_key = "gold_storm"
+emit_event_type = 0 ; HIT
+should_emit_event = true
+damage_gold_balance_pct = 0.001 ; 来源: 02号文件 §6.2 — 伤害 = 当前金币余额 × 0.1%
+
+[resource]
+script = ExtResource("1_aff")
+id = "gold_storm"
+name = "金币风暴"
+desc_template = "熔炼时金币化作弹丸射向怪物，伤害与金币余额挂钩"
+is_passive = false
+trigger = SubResource("Resource_trg")
+effect = SubResource("Resource_eff")
+budget_per_tick = 6 ; 来源: 02号文件 §2.3 每词条每 tick 预算
+counter_tags = Array[String](["fast_kill", "gold"]) ; 来源: 02号文件 §6.2 克制标签

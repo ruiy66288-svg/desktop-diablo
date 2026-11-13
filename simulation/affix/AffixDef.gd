@@ -16,6 +16,8 @@ const EffectDefScript = preload("res://simulation/affix/EffectDef.gd")
 @export var trigger: TriggerDefScript = null
 @export var effect: EffectDefScript = null
 @export var budget_per_tick: int = 10
+@export var extra_stats: Dictionary = {}                  # 被动词条的附加属性 {stat_key: val}
+@export var counter_tags: Array[String] = []            # 克制的关卡机制标签 (02 §6.2)
 
 func _init(p_id: String = "", p_name: String = "", p_passive: bool = false) -> void:
 	id = p_id

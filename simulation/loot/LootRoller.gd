@@ -29,7 +29,9 @@ func roll_loot_for_kill(
 	stage: int,
 	is_boss: bool,
 	state: RefCounted,
-	queue: EventQueueScript = null
+	queue: EventQueueScript = null,
+	count_mult: int = 1,
+	rarity_floor: int = 0
 ) -> Array[ItemInstanceScript]:
 	_unique_pity_counter += 1
 	var drops: Array[ItemInstanceScript] = []
@@ -40,20 +42,24 @@ func roll_loot_for_kill(
 	var loot_stream: SimRngScript.RngStream = sim_rng.loot
 
 	# 1. 掉落件数: 1.2 * (1 + drop_qty_bonus)，Boss 为基础固定件数，单次上限 drop_max_per_kill (30)
-	var qty_mult: float = 1.0 + maxf(0.0, stats.drop_qty_bonus)
+	var buff_qty_pct: float = 0.0
+	var buffs_var: Variant = state.get("buffs")
+	if buffs_var != null:
+		buff_qty_pct = (buffs_var as RefCounted).call("get_stat_bonus", "drop_qty_pct") as float
+	var qty_mult: float = 1.0 + maxf(0.0, stats.drop_qty_bonus + buff_qty_pct)
 	var expected_qty: float = float(bal.boss_drop_base_count) * qty_mult if is_boss else bal.drop_base_per_kill * qty_mult
 	var base_count: int = int(floor(expected_qty))
 	var frac_chance: float = expected_qty - float(base_count)
 	if loot_stream.roll_chance(frac_chance):
 		base_count += 1
-	var drop_count: int = clampi(base_count, 0, bal.drop_max_per_kill)
+	var drop_count: int = clampi(base_count * maxi(1, count_mult), 0, bal.drop_max_per_kill)
 
 	# 2. 逐件生成装备
 	var prestige_count: int = int(state.get("prestige_count"))
 	var eff_mf: float = bal.get_effective_mf(stats.magic_find)
 
 	for _i: int in range(drop_count):
-		var item: ItemInstanceScript = _generate_item(stage, prestige_count, eff_mf, bal, loot_stream)
+		var item: ItemInstanceScript = _generate_item(stage, prestige_count, eff_mf, bal, loot_stream, rarity_floor)
 		drops.push_back(item)
 		if queue != null:
 			var ev: SimEventScript = SimEventScript.new(SimEventScript.T.DROP, item.flat_atk_log)
@@ -71,7 +77,8 @@ func _generate_item(
 	prestige_count: int,
 	eff_mf: float,
 	bal: BalanceScript,
-	loot_stream: SimRngScript.RngStream
+	loot_stream: SimRngScript.RngStream,
+	rarity_floor: int = 0
 ) -> ItemInstanceScript:
 	var uid: int = _next_uid
 	_next_uid += 1
@@ -112,6 +119,10 @@ func _generate_item(
 			rarity_enum = ItemInstanceScript.Rarity.BLUE
 		else:
 			rarity_enum = ItemInstanceScript.Rarity.WHITE
+
+	# 品质保底（暗金雨等）：不低于 rarity_floor；已更高则保持
+	if int(rarity_enum) < rarity_floor:
+		rarity_enum = rarity_floor as ItemInstanceScript.Rarity
 
 	# iLvl 与太古满 roll + iLvl+5 + 额外 1 词条规则 (§1.2 & §1.7)
 	var ilvl: int = maxi(1, stage)

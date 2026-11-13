@@ -13,6 +13,7 @@ const PHASE_SAVING: String = "saving"        # 门前储蓄托管中
 const PHASE_WAITING: String = "waiting"      # 分界 Boss 已击杀，等待门票缴清
 const PHASE_WALL_SHIELD: String = "wall_shield"
 const PHASE_WALL_POWER: String = "wall_power"
+const PHASE_WALL_MECH: String = "wall_mech"       # 其余机制墙 (反噬/只吃暴击/分身/吞金)
 
 ## 返回当前门票快照：tier / gate_stage / toll_log / net_assets_log / progress(0..1) / saving / waiting / paid_tier
 static func get_status(state: RefCounted) -> Dictionary:
@@ -46,15 +47,18 @@ static func get_status(state: RefCounted) -> Dictionary:
 
 ## 当前玩家所处阶段：储蓄 / 等待缴费 / 护盾墙 / 数值墙 / 无
 static func get_phase(state: RefCounted) -> String:
-	var bal: BalanceScript = state.get("balance") as BalanceScript
 	if bool(state.get("gate_boss_cleared")):
 		return PHASE_WAITING
 	if bool(state.call("is_saving_for_toll")):
 		return PHASE_SAVING
-	if int(state.get("boss_fail_streak")) >= bal.wall_signal_fail_streak:
-		if BandRulesScript.get_shield_strength(int(state.get("current_stage")), bal) > 0.0:
-			return PHASE_WALL_SHIELD
-		return PHASE_WALL_POWER
+	var wall: Dictionary = state.call("get_wall_hint") as Dictionary
+	if bool(wall["active"]):
+		match String(wall["mechanic_id"]):
+			"shield":
+				return PHASE_WALL_SHIELD
+			"power":
+				return PHASE_WALL_POWER
+		return PHASE_WALL_MECH
 	return PHASE_NONE
 
 ## 卡墙 / 储蓄提示文案（§7.2、§7.3）
@@ -69,9 +73,6 @@ static func get_hint_text(state: RefCounted) -> String:
 			return "门前储蓄中：门票 %s，净资产进度 %s%%（托管金币不增加怪物血量）" % [
 				NumScript.format_num(float(status["toll_log"])), str(snappedf(float(status["progress"]) * 100.0, 0.1))
 			]
-		PHASE_WALL_SHIELD:
-			var def: MechanicDefScript = BandRulesScript.get_shield_def()
-			return def.wall_hint if def != null else "护盾卡墙"
-		PHASE_WALL_POWER:
-			return "数值墙 → 换 Build 或借钱"
+		PHASE_WALL_SHIELD, PHASE_WALL_POWER, PHASE_WALL_MECH:
+			return String((state.call("get_wall_hint") as Dictionary)["hint_zh"])
 	return ""

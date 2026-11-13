@@ -11,6 +11,8 @@ const BandRulesScript = preload("res://simulation/mechanics/BandRules.gd")
 static func spawn_next(state: SimStateScript) -> void:
 	_spawn_core(state)
 	_apply_band_shield(state)
+	state.boss_clone_triggered = false
+	state.boss_clones_remaining = 0
 
 ## 每 100 层主题机制：护盾 (§7.1) —— 护盾量 = 强度 × 50% 最大生命；每次命中最多削掉 强度 × strip% 最大生命
 static func _apply_band_shield(state: SimStateScript) -> void:

@@ -105,12 +105,14 @@ static func serialize(state: SimStateScript) -> Dictionary:
 			"toll_escrow": enc_f(state.toll_escrow),
 			"credit_tier": state.credit.credit_tier,
 			"active_loan": state.credit.active_loan,
+			"loan_count": state.credit.loan_count,
 			"borrowed_principal_log": enc_f(state.credit.borrowed_principal_log)
 		},
 		"progress": {
 			"souls": enc_f(state.souls),
 			"marks": state.marks,
 			"vault_powers": state.vault_powers.duplicate(),
+			"unlocked_vault_powers": state.unlocked_vault_powers.duplicate(),
 			"paid_gate_tier": state.paid_gate_tier,
 			"gate_boss_cleared": state.gate_boss_cleared,
 			"enforce_toll_gates": state.enforce_toll_gates,
@@ -135,6 +137,11 @@ static func serialize(state: SimStateScript) -> Dictionary:
 			"farm_kills_since_retreat": state.farm_kills_since_retreat,
 			"last_fail_margin_log": enc_f(state.last_fail_margin_log),
 			"atk_progress": enc_f(state.atk_progress),
+			"backlash_stacks": enc_f(state.backlash_stacks),
+			"stun_remaining_sec": enc_f(state.stun_remaining_sec),
+			"boss_clone_triggered": state.boss_clone_triggered,
+			"boss_clones_remaining": state.boss_clones_remaining,
+			"recent_income_per_sec_log": enc_f(state.recent_income_per_sec_log),
 			"mob_shield_max_log": enc_f(state.mob_shield_max_log),
 			"mob_shield_cur_log": enc_f(state.mob_shield_cur_log),
 			"mob_shield_strip_cap_log": enc_f(state.mob_shield_strip_cap_log)
@@ -189,6 +196,7 @@ static func deserialize(data: Dictionary, bal: BalanceScript = null) -> SimState
 	state.toll_escrow = dec_f(w.get("toll_escrow"), NumScript.ZERO)
 	state.credit.credit_tier = int(w.get("credit_tier", 0))
 	state.credit.active_loan = bool(w.get("active_loan", false))
+	state.credit.loan_count = int(w.get("loan_count", 1 if state.credit.active_loan else 0))
 	state.credit.borrowed_principal_log = dec_f(w.get("borrowed_principal_log"), NumScript.ZERO)
 
 	var p: Dictionary = data["progress"] as Dictionary
@@ -197,6 +205,9 @@ static func deserialize(data: Dictionary, bal: BalanceScript = null) -> SimState
 	state.vault_powers.clear()
 	for v: Variant in (p.get("vault_powers", []) as Array):
 		state.vault_powers.push_back(String(v))
+	state.unlocked_vault_powers.clear()
+	for uv: Variant in (p.get("unlocked_vault_powers", []) as Array):
+		state.unlocked_vault_powers.push_back(String(uv))
 	state.paid_gate_tier = int(p.get("paid_gate_tier", 0))
 	state.gate_boss_cleared = bool(p.get("gate_boss_cleared", false))
 	state.enforce_toll_gates = bool(p.get("enforce_toll_gates", true))
@@ -221,6 +232,11 @@ static func deserialize(data: Dictionary, bal: BalanceScript = null) -> SimState
 	state.farm_kills_since_retreat = int(b.get("farm_kills_since_retreat", 0))
 	state.last_fail_margin_log = dec_f(b.get("last_fail_margin_log"), NumScript.ZERO)
 	state.atk_progress = dec_f(b.get("atk_progress"), 0.0)
+	state.backlash_stacks = dec_f(b.get("backlash_stacks"), 0.0)
+	state.stun_remaining_sec = dec_f(b.get("stun_remaining_sec"), 0.0)
+	state.boss_clone_triggered = bool(b.get("boss_clone_triggered", false))
+	state.boss_clones_remaining = int(b.get("boss_clones_remaining", 0))
+	state.recent_income_per_sec_log = dec_f(b.get("recent_income_per_sec_log"), NumScript.ZERO)
 	state.mob_shield_max_log = dec_f(b.get("mob_shield_max_log"), NumScript.ZERO)
 	state.mob_shield_cur_log = dec_f(b.get("mob_shield_cur_log"), NumScript.ZERO)
 	state.mob_shield_strip_cap_log = dec_f(b.get("mob_shield_strip_cap_log"), NumScript.ZERO)
@@ -247,7 +263,7 @@ static func deserialize(data: Dictionary, bal: BalanceScript = null) -> SimState
 		var raw: Variant = eq_d.get(slot_key, null)
 		if raw is Dictionary:
 			state.equip_item(_item_from_dict(raw as Dictionary, balance))
-	state.recalculate_stats()
+	state.equip_slots.recalculate_and_apply(state)   # 重建 6 槽 + 威能槽监听器、被动汇总并重算面板
 	return state
 
 # ---------------------------------------------------------------- 文件读写

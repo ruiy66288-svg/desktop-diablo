@@ -16,7 +16,10 @@ enum Type {
 	ABYSS_PRESTIGE,       # 深渊印记转生: payload {"extract_power_id": String}
 	SET_FILTER_THRESHOLD,  # 设置掉落过滤保留品质阈值 (>= threshold): payload {"threshold": int}
 	START_RESEARCH,        # 开始研究科技节点 (§5.3): payload {"node_id": String, "now_unix": int}
-	SETTLE_RESEARCH        # 按 Unix 时间戳结算到期研究 (离线重开同样使用): payload {"now_unix": int}
+	SETTLE_RESEARCH,       # 按 Unix 时间戳结算到期研究 (离线重开同样使用): payload {"now_unix": int}
+	EQUIP_VAULT_POWER,     # 将已解锁的永久威能装配进威能槽: payload {"affix_id": String}
+	UNEQUIP_VAULT_POWER,   # 卸下威能槽中的永久威能: payload {"affix_id": String}
+	ACK_SIGNAL            # 确认并消除边缘光带信号: payload {"kind": int}
 }
 
 var type: Type = Type.BUY_ATK_UPGRADE
@@ -62,6 +65,15 @@ static func make_start_research(node_id: String, now_unix: int) -> Command:
 
 static func make_settle_research(now_unix: int) -> Command:
 	return _create(Type.SETTLE_RESEARCH, {"now_unix": now_unix})
+
+static func make_equip_vault_power(affix_id: String) -> Command:
+	return _create(Type.EQUIP_VAULT_POWER, {"affix_id": affix_id})
+
+static func make_unequip_vault_power(affix_id: String) -> Command:
+	return _create(Type.UNEQUIP_VAULT_POWER, {"affix_id": affix_id})
+
+static func make_ack_signal(kind: int) -> Command:
+	return _create(Type.ACK_SIGNAL, {"kind": kind})
 
 func clone() -> Command:
 	return (get_script() as GDScript).new(type, payload.duplicate()) as Command

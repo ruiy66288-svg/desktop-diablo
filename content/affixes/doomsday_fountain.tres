@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="AffixDef" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://simulation/affix/AffixDef.gd" id="1_aff"]
+[ext_resource type="Script" path="res://simulation/affix/TriggerDef.gd" id="2_trg"]
+[ext_resource type="Script" path="res://simulation/affix/EffectDef.gd" id="3_eff"]
+
+[sub_resource type="Resource" id="Resource_trg"]
+script = ExtResource("2_trg")
+event_type = 3 ; 来源: 02号文件 §6.2 终焉喷泉 (BOSS_KILL 触发) (触发事件类型)
+mode = 0
+threshold = 1
+chance = 1.0
+icd_ticks = 0
+
+[sub_resource type="Resource" id="Resource_eff"]
+script = ExtResource("3_eff")
+vfx_key = "fountain_burst"
+should_emit_event = false
+extra_drop_rolls = 4 ; 来源: 02号文件 §6.2 — 本次掉落 ×5 (额外 4 套整套掉落判定)
+
+[resource]
+script = ExtResource("1_aff")
+id = "doomsday_fountain"
+name = "终焉喷泉"
+desc_template = "击杀 Boss：本次掉落 ×5，全部落地即爆"
+is_passive = false
+trigger = SubResource("Resource_trg")
+effect = SubResource("Resource_eff")
+budget_per_tick = 2 ; 来源: 02号文件 §2.3 每词条每 tick 预算
+counter_tags = Array[String](["loot"]) ; 来源: 02号文件 §6.2 克制标签

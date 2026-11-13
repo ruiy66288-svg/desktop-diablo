@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="MechanicDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://simulation/mechanics/MechanicDef.gd" id="1_mech"]
+
+[resource]
+script = ExtResource("1_mech")
+id = "gold_devour"
+display_name = "吞金"
+kind = 5 ; 来源: 02号文件 §7.1 — 500-599 主题机制：吞金
+wall_hint = "怪物吞掉了你的金币 → 试试快速击杀 / 及时消费 / 金币风暴" ; 来源: 02号文件 §7.2 卡墙信号文案
+counter_tags = Array[String](["fast_kill", "gold"]) ; 来源: 02号文件 §6.2 克制词条标签

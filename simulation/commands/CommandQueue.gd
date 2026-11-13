@@ -136,8 +136,21 @@ func apply_command(cmd: CommandScript, state: RefCounted, event_queue: EventQueu
 			return not settled.is_empty()
 
 		CommandScript.Type.ABYSS_PRESTIGE:
+			var abyss_preview: Dictionary = state.call("get_abyss_prestige_preview") as Dictionary
+			if not bool(abyss_preview.get("can_prestige", false)):
+				return false   # run_best 未达 abyss_min_stage 或无印记可得
 			var power_id: String = String(cmd.payload.get("extract_power_id", ""))
 			state.call("perform_abyss_prestige", power_id)
+			return true
+
+		CommandScript.Type.EQUIP_VAULT_POWER:
+			return bool(state.call("equip_vault_power", String(cmd.payload.get("affix_id", ""))))
+
+		CommandScript.Type.UNEQUIP_VAULT_POWER:
+			return bool(state.call("unequip_vault_power", String(cmd.payload.get("affix_id", ""))))
+
+		CommandScript.Type.ACK_SIGNAL:
+			state.call("ack_signal", int(cmd.payload.get("kind", -1)))
 			return true
 
 	return false

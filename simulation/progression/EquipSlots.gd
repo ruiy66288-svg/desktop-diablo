@@ -1,14 +1,12 @@
 class_name EquipSlots extends RefCounted
 
-## 六槽位装备管理器 (依据《02_系统架构与数值_v6.md》§1.2 &《00_开发执行总纲.md》§2 E10)
-## 6 槽位: weapon / helm / chest / gloves / boots / trinket
+## 六槽位装备管理器 (依据《02_系统架构与数值_v6.md》§1.2、§1.5 与《00_开发执行总纲.md》§2 E10)
+## 6 槽位: weapon / helm / chest / gloves / boots / trinket；深渊永久威能槽 (vault) 与 6 槽并列生效
+## recalculate_and_apply：重建反应型词条监听器 + 汇总被动词条属性到 state.passive_totals，随后统一由 SimState.recalculate_stats 落到 StatSheet
 
 const ItemInstanceScript = preload("res://simulation/loot/ItemInstance.gd")
 const AffixDefScript = preload("res://simulation/affix/AffixDef.gd")
-const AffixResolverScript = preload("res://simulation/events/AffixResolver.gd")
-const BalanceScript = preload("res://simulation/Balance.gd")
-const StatSheetScript = preload("res://simulation/StatSheet.gd")
-const NumScript = preload("res://core/num/Num.gd")
+const SignatureAffixesScript = preload("res://simulation/affix/SignatureAffixes.gd")
 
 const SLOT_KEYS: Array[String] = [
 	"weapon",
@@ -68,52 +66,42 @@ func recalculate_and_apply(state: RefCounted) -> void:
 	if state == null:
 		return
 
-	var bal: BalanceScript = state.get("balance") as BalanceScript
-	var stats: StatSheetScript = state.get("stats") as StatSheetScript
-
-	var total_gear_atk_log: float = NumScript.ZERO
-	var total_add_pct: float = 0.0
-	var total_unique_log: float = 0.0
-
-	stats.crit_rate = bal.base_crit_rate
-	stats.crit_mult = bal.base_crit_mult
-
-	for v: Variant in equipped.values():
-		var it: ItemInstanceScript = v as ItemInstanceScript
-		if it == null:
-			continue
-		if it.flat_atk_log != NumScript.ZERO:
-			total_gear_atk_log = NumScript.add(total_gear_atk_log, it.flat_atk_log)
-		total_add_pct += it.additive_pct
-		if it.unique_mult > 1.0:
-			total_unique_log += NumScript.from_float(it.unique_mult)
-
-		for af_var: Variant in it.affixes:
-			if af_var is AffixDefScript:
-				var af: AffixDefScript = af_var as AffixDefScript
-				if af.is_passive:
-					match af.stat_key:
-						"additive_percent":
-							total_add_pct += af.stat_val
-						"crit_rate":
-							stats.crit_rate += af.stat_val
-						"crit_mult":
-							stats.crit_mult += af.stat_val
-
-	stats.gear_flat_atk_log = total_gear_atk_log
-	stats.additive_percent = total_add_pct
-	stats.unique_mults_sum_log = total_unique_log
-
+	var totals: Dictionary = {}
 	var resolver_obj: Variant = state.get("resolver")
-	if resolver_obj is AffixResolverScript:
-		var resolver: AffixResolverScript = resolver_obj as AffixResolverScript
-		resolver.clear_listeners()
-		for slot_key_var: Variant in equipped.keys():
-			var s_idx: int = int(slot_key_var)
-			var it_ref: ItemInstanceScript = equipped[s_idx] as ItemInstanceScript
-			for af_idx in range(it_ref.affixes.size()):
-				var af_entry: Variant = it_ref.affixes[af_idx]
-				if af_entry is AffixDefScript:
-					var r_af: AffixDefScript = af_entry as AffixDefScript
-					if not r_af.is_passive:
-						resolver.register_listener(r_af, s_idx, af_idx)
+	var has_resolver: bool = resolver_obj != null
+	if has_resolver:
+		resolver_obj.call("clear_listeners")
+
+	# 6 槽装备词条
+	for slot_key_var: Variant in equipped.keys():
+		var s_idx: int = int(slot_key_var)
+		var it_ref: ItemInstanceScript = equipped[s_idx] as ItemInstanceScript
+		if it_ref == null:
+			continue
+		for af_idx: int in range(it_ref.affixes.size()):
+			var af_entry: Variant = it_ref.affixes[af_idx]
+			if af_entry is AffixDefScript:
+				_apply_affix(af_entry as AffixDefScript, s_idx, af_idx, totals, resolver_obj)
+
+	# 深渊永久威能槽（与 6 槽并列，槽位编号接在装备槽之后）
+	var vault_var: Variant = state.get("vault_powers")
+	if vault_var is Array:
+		var vault_list: Array = vault_var as Array
+		for v_idx: int in range(vault_list.size()):
+			var def: AffixDefScript = SignatureAffixesScript.get_by_id(String(vault_list[v_idx]))
+			if def != null:
+				_apply_affix(def, SLOT_KEYS.size() + v_idx, 0, totals, resolver_obj)
+
+	state.set("passive_totals", totals)
+	if state.has_method("recalculate_stats"):
+		state.call("recalculate_stats")
+
+func _apply_affix(def: AffixDefScript, slot_idx: int, affix_idx: int, totals: Dictionary, resolver_obj: Variant) -> void:
+	if def.is_passive:
+		if not def.stat_key.is_empty():
+			totals[def.stat_key] = float(totals.get(def.stat_key, 0.0)) + def.stat_val
+		for extra_key: Variant in def.extra_stats.keys():
+			var k: String = String(extra_key)
+			totals[k] = float(totals.get(k, 0.0)) + float(def.extra_stats[extra_key])
+	elif resolver_obj != null:
+		resolver_obj.call("register_listener", def, slot_idx, affix_idx)

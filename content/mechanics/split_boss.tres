@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="MechanicDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://simulation/mechanics/MechanicDef.gd" id="1_mech"]
+
+[resource]
+script = ExtResource("1_mech")
+id = "split_boss"
+display_name = "分身"
+kind = 4 ; 来源: 02号文件 §7.1 — 400-499 主题机制：分身
+wall_hint = "Boss 分身拖慢了击杀 → 试试溅射 / 连锁 / 落地即爆" ; 来源: 02号文件 §7.2 卡墙信号文案
+counter_tags = Array[String](["splash", "chain"]) ; 来源: 02号文件 §6.2 克制词条标签

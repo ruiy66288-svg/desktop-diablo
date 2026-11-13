@@ -1,0 +1,35 @@
+[gd_resource type="Resource" script_class="AffixDef" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://simulation/affix/AffixDef.gd" id="1_aff"]
+[ext_resource type="Script" path="res://simulation/affix/TriggerDef.gd" id="2_trg"]
+[ext_resource type="Script" path="res://simulation/affix/EffectDef.gd" id="3_eff"]
+
+[sub_resource type="Resource" id="Resource_trg"]
+script = ExtResource("2_trg")
+event_type = 1 ; 来源: 02号文件 §2.4 暴击余韵 (CRIT, ICD 5 tick) (触发事件类型)
+mode = 0
+threshold = 1
+chance = 1.0
+icd_ticks = 5
+
+[sub_resource type="Resource" id="Resource_eff"]
+script = ExtResource("3_eff")
+vfx_key = "crit_afterglow"
+should_emit_event = false
+apply_buff_key = "crit_afterglow"
+buff_duration_ticks = 30 ; 来源: 02号文件 §2.4 — 持续 3 秒 (10Hz = 30 tick)
+buff_max_stacks = 5 ; 来源: 02号文件 §2.4 — 最多 5 层
+buff_stat = "drop_qty_pct"
+buff_val_per_stack = 0.2 ; 来源: 02号文件 §2.4 — 掉落数量 +20%/层
+launch_mul = 1.2 ; 来源: 02号文件 §2.4 — 喷射高度 ×1.2
+
+[resource]
+script = ExtResource("1_aff")
+id = "crit_afterglow"
+name = "暴击余韵"
+desc_template = "暴击叠加余韵：掉率 +20%/层(≤5 层)，持续 3 秒，喷射高度 ×1.2"
+is_passive = false
+trigger = SubResource("Resource_trg")
+effect = SubResource("Resource_eff")
+budget_per_tick = 6 ; 来源: 02号文件 §2.3 每词条每 tick 预算
+counter_tags = Array[String](["loot"]) ; 来源: 02号文件 §6.2 克制标签

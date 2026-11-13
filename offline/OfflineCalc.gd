@@ -52,7 +52,8 @@ static func settle(state: SimStateScript, elapsed_seconds: float, now_unix: int)
 	var research_done: Array[String] = state.settle_research(now_unix)
 
 	# 2. 金币：校准外推，封顶离线上限
-	var cap_seconds: float = bal.offline_cap_base_hours * SECONDS_PER_HOUR
+	var cap_hours: float = bal.offline_cap_max_hours if state.has_tech_effect("offline_cap_24h") else bal.offline_cap_base_hours
+	var cap_seconds: float = cap_hours * SECONDS_PER_HOUR
 	var effective: float = clampf(elapsed_seconds, 0.0, cap_seconds)
 	var gain_log: float = NumScript.ZERO
 	if effective > 0.0:

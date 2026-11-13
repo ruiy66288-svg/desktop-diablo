@@ -1,0 +1,33 @@
+[gd_resource type="Resource" script_class="AffixDef" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://simulation/affix/AffixDef.gd" id="1_aff"]
+[ext_resource type="Script" path="res://simulation/affix/TriggerDef.gd" id="2_trg"]
+[ext_resource type="Script" path="res://simulation/affix/EffectDef.gd" id="3_eff"]
+
+[sub_resource type="Resource" id="Resource_trg"]
+script = ExtResource("2_trg")
+event_type = 0 ; 来源: 02号文件 §6.2 克制护盾 (HIT 触发) (触发事件类型)
+mode = 0
+threshold = 1
+chance = 1.0
+icd_ticks = 0
+
+[sub_resource type="Resource" id="Resource_eff"]
+script = ExtResource("3_eff")
+vfx_key = "multi_strike"
+emit_event_type = 0 ; HIT
+should_emit_event = true
+damage_mult = 0.35 ; 来源: 02号文件 §6.2 克制护盾 — 多段命中，单段 35% 伤害
+splash_count = 2 ; 来源: 02号文件 §6.2 — 主段 + 2 段追加 = 3 段额外打击
+splash_decay = 1.0
+
+[resource]
+script = ExtResource("1_aff")
+id = "multi_strike"
+name = "碎盾连刺"
+desc_template = "每次命中追加 3 段额外打击，每段 35% 伤害"
+is_passive = false
+trigger = SubResource("Resource_trg")
+effect = SubResource("Resource_eff")
+budget_per_tick = 8 ; 来源: 02号文件 §2.3 每词条每 tick 预算
+counter_tags = Array[String](["multi_hit", "chain"]) ; 来源: 02号文件 §6.2 克制标签

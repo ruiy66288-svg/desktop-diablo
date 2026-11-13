@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="MechanicDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://simulation/mechanics/MechanicDef.gd" id="1_mech"]
+
+[resource]
+script = ExtResource("1_mech")
+id = "backlash"
+display_name = "反噬"
+kind = 2 ; 来源: 02号文件 §7.1 — 200-299 主题机制：反噬
+wall_hint = "反噬眩晕打断了输出 → 试试低频高伤 / 触发流词条" ; 来源: 02号文件 §7.2 卡墙信号文案
+counter_tags = Array[String](["low_freq_high_dmg", "trigger"]) ; 来源: 02号文件 §6.2 克制词条标签

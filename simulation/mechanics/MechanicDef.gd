@@ -16,3 +16,4 @@ enum Kind {
 @export var display_name: String = ""
 @export var kind: Kind = Kind.NONE
 @export var wall_hint: String = ""    # 卡墙信号文案 (§7.2)
+@export var counter_tags: Array[String] = []   # 克制该机制的词条标签 (每种机制至少 2 种克制词条, §6.2)

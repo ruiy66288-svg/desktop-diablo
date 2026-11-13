@@ -10,6 +10,9 @@ const FLOAT_EPS: float = 1e-9
 
 var credit_tier: int = 0
 var tier_bonus: int = 0   # 科技树「信用背书」带来的额外等级 (不改变 credit_tier 升阶计数)
+var loan_count: int = 0    # 当前活跃借款笔数 (active_loan = loan_count > 0)
+var extra_loans: int = 0   # 科技树「双并发贷款」带来的额外并发笔数
+var repay_discount: float = 0.0   # 科技树「信用折扣」对溢价倍率的减免 (溢价不会低于 1.0，借款永不使净财富上升)
 var active_loan: bool = false
 var borrowed_principal_log: float = NumScript.ZERO
 
@@ -18,8 +21,11 @@ func get_credit_limit_log(stage: int, balance: BalanceScript) -> float:
 	return balance.get_credit_limit_log(stage, credit_tier + tier_bonus)
 
 ## 判定在当前信用状态下该借款金额是否可申请
+func get_max_concurrent_loans(balance: BalanceScript) -> int:
+	return balance.credit_max_concurrent_loans + extra_loans
+
 func can_borrow(stage: int, borrow_log: float, balance: BalanceScript) -> bool:
-	if active_loan:
+	if loan_count >= get_max_concurrent_loans(balance):
 		return false
 	var preview: Dictionary = preview_borrow(stage, borrow_log, balance)
 	return bool(preview.get("valid", false))
@@ -34,7 +40,7 @@ func preview_borrow(stage: int, borrow_log: float, balance: BalanceScript) -> Di
 		return {"valid": false, "reason": "超过当前信用额度"}
 
 	var u: float = clampf(pow(10.0, NumScript.div(borrow_log, limit_log)), 0.0, 1.0)
-	var repayment_mult: float = balance.get_credit_repayment_mult(u)
+	var repayment_mult: float = maxf(1.0, balance.get_credit_repayment_mult(u) - repay_discount)
 	var repayment_total_log: float = NumScript.mul(borrow_log, NumScript.from_float(repayment_mult))
 
 	var income_min: float = balance.get_expected_income_per_min_log(stage)
@@ -54,6 +60,9 @@ func clone() -> Credit:
 	var copy: Credit = (get_script() as GDScript).new() as Credit
 	copy.credit_tier = credit_tier
 	copy.tier_bonus = tier_bonus
+	copy.loan_count = loan_count
+	copy.extra_loans = extra_loans
+	copy.repay_discount = repay_discount
 	copy.active_loan = active_loan
 	copy.borrowed_principal_log = borrowed_principal_log
 	return copy

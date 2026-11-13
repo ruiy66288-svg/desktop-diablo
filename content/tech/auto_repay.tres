@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="TechNodeDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://simulation/tech/TechNodeDef.gd" id="1_node"]
+
+[resource]
+script = ExtResource("1_node")
+id = "auto_repay"
+display_name = "自动还债"
+branch = "automation" ; 来源: 02号文件 Q28 (战斗/经济/信贷/自动化四分支)
+tier = 3 ; 来源: 02号文件 §5.3 (研究时长 2 分钟 × 2.2^tier)
+cost_gold_log = 7.5 ; 来源: 02号文件 §5.3 (价格按层级指数增长，原型占位价)
+prereq_id = "auto_upgrade"
+effect_key = "auto_repay"
+effect_val = 1 ; 来源: 02号文件 §5.3 (节点 Effect 注入 StatSheet 修饰器)
+desc = "金币余额自动偿还活跃借款"

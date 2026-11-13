@@ -38,6 +38,38 @@ func add_buff(
 		new_buff.hint = hint
 		_active_buffs[key] = new_buff
 
+## 充能型 Buff（如暗金雨）：永不超时(remaining_ticks = -1)，由 consume_charge 消耗；叠加上限 max_charges
+func add_charge(key: String, amount: int, max_charges: int, hint: Dictionary = {}) -> void:
+	if _active_buffs.has(key):
+		var existing: BuffInstance = _active_buffs[key] as BuffInstance
+		existing.charges = mini(existing.charges + amount, max_charges)
+		existing.hint = hint
+	else:
+		var fresh: BuffInstance = BuffInstance.new()
+		fresh.key = key
+		fresh.remaining_ticks = -1
+		fresh.max_stacks = 1
+		fresh.charges = mini(amount, max_charges)
+		fresh.hint = hint
+		_active_buffs[key] = fresh
+
+func get_charges(key: String) -> int:
+	if _active_buffs.has(key):
+		return (_active_buffs[key] as BuffInstance).charges
+	return 0
+
+## 消耗 1 点充能，成功返回 true；耗尽后移除
+func consume_charge(key: String) -> bool:
+	if not _active_buffs.has(key):
+		return false
+	var b: BuffInstance = _active_buffs[key] as BuffInstance
+	if b.charges <= 0:
+		return false
+	b.charges -= 1
+	if b.charges <= 0:
+		_active_buffs.erase(key)
+	return true
+
 func has_buff(key: String) -> bool:
 	return _active_buffs.has(key)
 
@@ -59,6 +91,8 @@ func tick() -> void:
 	for key_var: Variant in _active_buffs.keys():
 		var key: String = str(key_var)
 		var buff: BuffInstance = _active_buffs[key] as BuffInstance
+		if buff.remaining_ticks < 0:
+			continue   # 充能型永不超时
 		buff.remaining_ticks -= 1
 		if buff.remaining_ticks <= 0:
 			expired_keys.push_back(key)

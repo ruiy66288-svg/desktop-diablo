@@ -34,8 +34,8 @@ static func _make_state(seed_val: int) -> SimStateScript:
 
 static func _test_catalog_and_validation() -> bool:
 	var state: SimStateScript = _make_state(1)
-	if state.tech.defs.size() != 6:
-		printerr("[TestTechTree] 原型应有 6 个科技节点, 实际: ", state.tech.defs.size())
+	if state.tech.defs.size() != 12:
+		printerr("[TestTechTree] 原型应有 12 个科技节点, 实际: ", state.tech.defs.size())
 		return false
 	var branches: Dictionary = {}
 	for def: Variant in state.tech.defs.values():

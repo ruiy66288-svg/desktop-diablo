@@ -24,6 +24,12 @@ const EquipSlotsScript = preload("res://simulation/progression/EquipSlots.gd")
 const TechTreeScript = preload("res://simulation/tech/TechTree.gd")
 const ResearchQueueScript = preload("res://simulation/tech/ResearchQueue.gd")
 const TechNodeDefScript = preload("res://simulation/tech/TechNodeDef.gd")
+const SmelterScript = preload("res://simulation/loot/Smelter.gd")
+const SignalsScript = preload("res://simulation/attention/Signals.gd")
+const SignatureAffixesScript = preload("res://simulation/affix/SignatureAffixes.gd")
+const AffixDefScript = preload("res://simulation/affix/AffixDef.gd")
+const BandRulesScript = preload("res://simulation/mechanics/BandRules.gd")
+const MechanicDefScript = preload("res://simulation/mechanics/MechanicDef.gd")
 
 const EQUIP_SLOTS: Array[String] = [
 	"weapon",
@@ -77,7 +83,8 @@ var credit: CreditScript:
 
 var souls: float = NumScript.ZERO               # 灵魂储备 (log10)
 var marks: int = 0                              # 累计深渊印记数
-var vault_powers: Array[String] = []            # 已萃取的永久威能 ID 列表
+var vault_powers: Array[String] = []            # 已装配进永久威能槽的词条 ID 列表 (槽位数 = 1 + floor(marks/5), Q20)
+var unlocked_vault_powers: Array[String] = []   # 已萃取解锁的永久威能池（永久保留）
 
 # 3. 关卡门票、周目计数与时钟统计
 var paid_gate_tier: int = 0                     # 本周目已缴纳门票的百层门阶次
@@ -102,6 +109,15 @@ var atk_progress: float = 0.0
 var mob_shield_max_log: float = NumScript.ZERO        # 当前怪物护盾上限 (§7.1，无护盾为 -INF)
 var mob_shield_cur_log: float = NumScript.ZERO
 var mob_shield_strip_cap_log: float = NumScript.ZERO
+var backlash_stacks: float = 0.0                  # 200–299 反噬累积 (§7.1)
+var stun_remaining_sec: float = 0.0              # 反噬眩晕剩余秒数
+var boss_clone_triggered: bool = false          # 400–499 分身是否已触发
+var boss_clones_remaining: int = 0
+var recent_income_per_sec_log: float = NumScript.ZERO   # 近期每秒收入 (吞金上限基准)
+var mech_absorbed_log: Array[float] = [NumScript.ZERO, NumScript.ZERO, NumScript.ZERO, NumScript.ZERO, NumScript.ZERO, NumScript.ZERO]   # 按机制 Kind 统计被吸收/削减伤害 (卡墙归因 §7.2)
+var mech_dealt_log: float = NumScript.ZERO     # 同期实际打进怪物生命的伤害
+var passive_totals: Dictionary = {}              # 被动词条汇总 {stat_key: value}
+var signals: SignalsScript                       # 边缘光带信号 (§5.4)
 
 # 5. 6 槽装备栏、外部指令队列与子系统实例
 var equipped: Dictionary = {}
@@ -134,6 +150,7 @@ func _init(seed_val: int = 123456789, p_balance: BalanceScript = null) -> void:
 	equip_slots = EquipSlotsScript.new()
 	tech = TechTreeScript.new()
 	research_queue = ResearchQueueScript.new()
+	signals = SignalsScript.new()
 	_init_empty_equip_slots()
 	recalculate_stats()
 
@@ -245,6 +262,7 @@ func advance_to_next_stage(queue: EventQueueScript = null) -> void:
 	all_time_best = maxi(all_time_best, current_stage)
 	mobs_killed_in_stage = 0
 	farm_kills_since_retreat = 0
+	_reset_mech_attempt_stats()
 	if queue != null:
 		queue.push_back(SimEventScript.new(SimEventScript.T.STAGE_UP, float(current_stage)))
 
@@ -256,7 +274,10 @@ func add_income(amount_log: float, queue: EventQueueScript = null) -> void:
 	var income_bonus_pct: float = tech.get_effect_total("income_mult_pct")
 	var boosted_log: float = amount_log + NumScript.from_float(1.0 + income_bonus_pct) if income_bonus_pct > 0.0 else amount_log
 	var saving_mode: bool = is_saving_for_toll()
+	var tier_before: int = wallet.credit.credit_tier
 	wallet.add_income(boosted_log, balance, get_active_stage(), saving_mode)
+	if wallet.credit.credit_tier > tier_before:
+		raise_signal(SignalsScript.Kind.CREDIT_TIER_UP, {"tier": wallet.credit.credit_tier}, queue)
 
 	if enforce_toll_gates and try_pay_next_toll() and gate_boss_cleared:
 		advance_to_next_stage(queue)
@@ -276,6 +297,8 @@ func start_research(node_id: String, now_unix: int) -> bool:
 		return false
 	if not def.prereq_id.is_empty() and not tech.has_researched(def.prereq_id) and not research_queue.contains(def.prereq_id):
 		return false
+	if marks < def.requires_marks:
+		return false   # 深层节点需深渊印记解锁 (§5.3)
 	if research_queue.is_full(balance.tech_queue_max_slots):
 		return false
 	if not spend_gold(def.cost_gold_log):
@@ -287,10 +310,7 @@ func settle_research(now_unix: int, queue: EventQueueScript = null) -> Array[Str
 	var done: Array[String] = research_queue.settle(now_unix)
 	for node_id: String in done:
 		tech.mark_researched(node_id)
-		if queue != null:
-			var ev: SimEventScript = SimEventScript.new(SimEventScript.T.ATTENTION, 0.0)
-			ev.payload = {"signal": "research_done", "node_id": node_id}
-			queue.push_back(ev)
+		raise_signal(SignalsScript.Kind.RESEARCH_DONE, {"node_id": node_id}, queue)
 	if not done.is_empty():
 		recalculate_stats()
 	return done
@@ -339,15 +359,226 @@ func recalculate_stats() -> void:
 		var avg_vault_mult: float = VAULT_AVG_WEIGHT * (balance.unique_mult_min + balance.unique_mult_max)
 		total_unique_log += float(active_vault_count) * NumScript.from_float(avg_vault_mult)
 
-	total_add_pct += tech.get_effect_total("additive_pct")
-	stats.crit_rate_bonus = tech.get_effect_total("crit_rate")
+	total_add_pct += tech.get_effect_total("additive_pct") + float(passive_totals.get("additive_percent", 0.0))
+	stats.crit_rate_bonus = tech.get_effect_total("crit_rate") + float(passive_totals.get("crit_rate", 0.0))
+	stats.crit_mult = balance.base_crit_mult + float(passive_totals.get("crit_mult", 0.0))
 	stats.drop_qty_bonus = tech.get_effect_total("drop_qty_bonus")
 	wallet.credit.tier_bonus = int(tech.get_effect_total("credit_tier_bonus"))
+	wallet.credit.extra_loans = int(tech.get_effect_total("credit_extra_loans"))
+	wallet.credit.repay_discount = tech.get_effect_total("credit_repay_discount")
 	stats.gear_flat_atk_log = total_gear_flat_log
 	stats.additive_percent = total_add_pct
 	stats.unique_mults_sum_log = total_unique_log
 	stats.soul_mult_log = balance.get_soul_mult_log(souls)
 
+# ---------------------------------------------------------------- 阶段 2：机制统计、卡墙归因、信号、威能
+
+func record_mech_absorbed(kind: int, dmg_log: float) -> void:
+	if kind >= 0 and kind < mech_absorbed_log.size():
+		mech_absorbed_log[kind] = NumScript.add(mech_absorbed_log[kind], dmg_log)
+
+func record_mech_dealt(dmg_log: float) -> void:
+	mech_dealt_log = NumScript.add(mech_dealt_log, dmg_log)
+
+func _reset_mech_attempt_stats() -> void:
+	for i: int in range(mech_absorbed_log.size()):
+		mech_absorbed_log[i] = NumScript.ZERO
+	mech_dealt_log = NumScript.ZERO
+
+func is_in_net_debt() -> bool:
+	return debt_total != NumScript.ZERO and debt_total > gold
+
+## 债契护印：净负债时的额外伤害加成 (log10)，无则 0
+func get_conditional_damage_bonus_log() -> float:
+	var bonus: float = float(passive_totals.get("debt_damage_bonus", 0.0))
+	if bonus > 0.0 and is_in_net_debt():
+		return NumScript.from_float(1.0 + bonus)
+	return 0.0
+
+## 债契护印：净负债时吞金吞噬量系数 (1.0 = 无减免)
+func get_gold_eat_factor() -> float:
+	var cut: float = float(passive_totals.get("eat_reduction", 0.0))
+	if cut > 0.0 and is_in_net_debt():
+		return maxf(0.0, 1.0 - cut)
+	return 1.0
+
+## 机制 kind 本次 Boss 尝试期间吸收/削减伤害占比 = absorbed / (absorbed + dealt)
+func get_mech_absorbed_ratio(kind: int) -> float:
+	if kind < 0 or kind >= mech_absorbed_log.size():
+		return 0.0
+	var absorbed: float = mech_absorbed_log[kind]
+	if absorbed == NumScript.ZERO:
+		return 0.0
+	var total: float = NumScript.add(absorbed, mech_dealt_log)
+	return clampf(pow(10.0, absorbed - total), 0.0, 1.0)
+
+## 卡墙归因 (§7.2)：连续 N 次 Boss 失败后，归因到吸收伤害占比最高的机制并给出克制提示
+func get_wall_hint() -> Dictionary:
+	if boss_fail_streak < balance.wall_signal_fail_streak:
+		var no_hint: Array[String] = []
+		return {"active": false, "mechanic_id": "", "absorbed_ratio": 0.0, "hint_zh": "", "counter_tags": no_hint}
+	var strengths: Dictionary = BandRulesScript.get_strengths(current_stage, balance)
+	var best_kind: int = 0
+	var best_ratio: float = -1.0
+	var best_strength: float = 0.0
+	for kind_var: Variant in strengths.keys():
+		var kind: int = int(kind_var)
+		var ratio: float = get_mech_absorbed_ratio(kind)
+		var strength: float = float(strengths[kind_var])
+		if ratio > best_ratio or (is_equal_approx(ratio, best_ratio) and strength > best_strength):
+			best_kind = kind
+			best_ratio = ratio
+			best_strength = strength
+	if best_kind == 0:
+		var power_tags: Array[String] = ["power"]
+		return {"active": true, "mechanic_id": "power", "absorbed_ratio": 0.0, "hint_zh": "数值墙 → 换 Build 或借钱", "counter_tags": power_tags}
+	var def: MechanicDefScript = BandRulesScript.get_mechanic_def(best_kind)
+	var hint: String = def.wall_hint
+	if best_ratio > 0.0:
+		hint += "（吸收 %d%%）" % int(round(best_ratio * 100.0))
+	return {
+		"active": true,
+		"mechanic_id": def.id,
+		"absorbed_ratio": maxf(0.0, best_ratio),
+		"hint_zh": hint,
+		"counter_tags": def.counter_tags.duplicate()
+	}
+
+## 触发边缘光带信号：首次触发时发出 ATTENTION 事件（同类去重，§5.4）
+func raise_signal(kind: int, payload: Dictionary = {}, queue: EventQueueScript = null) -> void:
+	var is_new: bool = signals.raise_signal(kind, payload)
+	if is_new and queue != null:
+		var ev: SimEventScript = SimEventScript.new(SimEventScript.T.ATTENTION, float(kind))
+		var pl: Dictionary = payload.duplicate()
+		pl["signal"] = SignalsScript.get_name_of(kind)
+		ev.payload = pl
+		queue.push_back(ev)
+
+func ack_signal(kind: int) -> void:
+	signals.clear_signal(kind)
+
+## §1.6 最优停止判据：灵魂获取速率越过峰值后回落到 drop_ratio 以下即可转生
+func is_prestige_ready() -> bool:
+	if elapsed_seconds < balance.auto_prestige_min_run_seconds:
+		return false
+	var pending: float = balance.get_pending_souls_log(run_best, marks)
+	if pending == NumScript.ZERO or peak_soul_rate_log == NumScript.ZERO:
+		return false
+	var rate_log: float = pending - NumScript.from_float(elapsed_seconds)
+	return rate_log < peak_soul_rate_log + NumScript.from_float(balance.auto_prestige_rate_drop_ratio)
+
+## 每 tick 刷新由状态推导的信号（卡墙 / 可转生）
+func update_attention_signals(queue: EventQueueScript = null) -> void:
+	var wall: Dictionary = get_wall_hint()
+	if bool(wall["active"]):
+		raise_signal(SignalsScript.Kind.WALL_HINT, {"mechanic_id": wall["mechanic_id"], "hint_zh": wall["hint_zh"]}, queue)
+	else:
+		signals.clear_signal(SignalsScript.Kind.WALL_HINT)
+	if is_prestige_ready():
+		raise_signal(SignalsScript.Kind.PRESTIGE_READY, {}, queue)
+	else:
+		signals.clear_signal(SignalsScript.Kind.PRESTIGE_READY)
+
+## 估算穿戴候选装备后期望 DPS 的 log10 增量（通过纯净克隆 StatSheet 计算，绝不修改当前真实状态与面板）
+func estimate_equip_delta_log(item: ItemInstanceScript) -> float:
+	var slot_key: String = ItemInstanceScript.get_slot_key(item.slot)
+	var prev: ItemInstanceScript = equipped.get(slot_key, null) as ItemInstanceScript
+	var prev_flat: float = prev.flat_atk_log if prev != null else NumScript.ZERO
+	var prev_add: float = prev.additive_pct if prev != null else 0.0
+	var prev_uniq: float = (NumScript.from_float(prev.unique_mult) if prev.unique_mult > 1.0 else 0.0) if prev != null else 0.0
+
+	var item_flat: float = item.flat_atk_log
+	var item_add: float = item.additive_pct
+	var item_uniq: float = NumScript.from_float(item.unique_mult) if item.unique_mult > 1.0 else 0.0
+
+	var test_stats: StatSheetScript = stats.clone()
+	var base_dps: float = test_stats.get_expected_dps_log(balance.min_atk_interval)
+
+	if prev_flat != NumScript.ZERO:
+		test_stats.gear_flat_atk_log = NumScript.sub(test_stats.gear_flat_atk_log, prev_flat)
+	test_stats.gear_flat_atk_log = NumScript.add(test_stats.gear_flat_atk_log, item_flat)
+	test_stats.additive_percent = maxf(0.0, test_stats.additive_percent - prev_add + item_add)
+	test_stats.unique_mults_sum_log = maxf(0.0, test_stats.unique_mults_sum_log - prev_uniq + item_uniq)
+
+	var cand_dps: float = test_stats.get_expected_dps_log(balance.min_atk_interval)
+	return cand_dps - base_dps
+
+## 新暗金/太古装备入包且估算 DPS 增量 > 0 时触发「强力新装备」信号 (§5.4)
+func note_item_kept(item: ItemInstanceScript, queue: EventQueueScript = null) -> void:
+	if int(item.rarity) < int(ItemInstanceScript.Rarity.UNIQUE):
+		return
+	if estimate_equip_delta_log(item) > 0.0:
+		raise_signal(SignalsScript.Kind.BETTER_UNIQUE, {
+			"uid": item.uid, "rarity": int(item.rarity), "slot": ItemInstanceScript.get_slot_key(item.slot)
+		}, queue)
+
+## 额外整套掉落判定（终焉喷泉）：走过滤/背包/熔炼，返回对应 DROP 事件供词条链继续触发
+func grant_bonus_drops(rolls: int, is_boss: bool) -> Array:
+	var events: Array = []
+	for _r: int in range(maxi(0, rolls)):
+		var items: Array[ItemInstanceScript] = loot_roller.roll_loot_for_kill(get_active_stage(), is_boss, self, null)
+		for item: ItemInstanceScript in items:
+			if filter.should_keep(item):
+				inventory.add_item(item, self, null)
+				note_item_kept(item, null)
+			else:
+				SmelterScript.smelt_item(item, self, null)
+			var ev: SimEventScript = SimEventScript.new(SimEventScript.T.DROP, item.flat_atk_log)
+			ev.payload = {"item_uid": item.uid, "rarity": int(item.rarity), "slot": ItemInstanceScript.get_slot_key(item.slot)}
+			events.push_back(ev)
+	return events
+
+# ---------------------------------------------------------------- 深渊转生与永久威能 (Q20)
+
+func get_max_vault_slots() -> int:
+	return balance.get_vault_slot_count(marks)
+
+## 当前持有的暗金/太古装备（6 槽 + 背包）上可萃取的词条 id（去重）
+func collect_extractable_affix_ids() -> Array[String]:
+	var ids: Array[String] = []
+	var pool: Array[ItemInstanceScript] = []
+	for slot_key: String in EQUIP_SLOTS:
+		var eq: ItemInstanceScript = equipped.get(slot_key, null) as ItemInstanceScript
+		if eq != null:
+			pool.push_back(eq)
+	for i: int in range(inventory.get_count()):
+		pool.push_back(inventory.get_item_at(i))
+	for it: ItemInstanceScript in pool:
+		if int(it.rarity) < int(ItemInstanceScript.Rarity.UNIQUE):
+			continue
+		for a: Variant in it.affixes:
+			if a is AffixDefScript and not ids.has((a as AffixDefScript).id):
+				ids.push_back((a as AffixDefScript).id)
+	return ids
+
+func equip_vault_power(affix_id: String) -> bool:
+	if not unlocked_vault_powers.has(affix_id) or vault_powers.has(affix_id):
+		return false
+	if vault_powers.size() >= get_max_vault_slots():
+		return false
+	vault_powers.push_back(affix_id)
+	equip_slots.recalculate_and_apply(self)
+	return true
+
+func unequip_vault_power(affix_id: String) -> bool:
+	if not vault_powers.has(affix_id):
+		return false
+	vault_powers.erase(affix_id)
+	equip_slots.recalculate_and_apply(self)
+	return true
+
+## 深渊转生预览（只读）：run_best >= abyss_min_stage 才可触发 (§1.5)
+func get_abyss_prestige_preview() -> Dictionary:
+	var pending: int = balance.get_pending_marks(all_time_best)
+	return {
+		"can_prestige": run_best >= balance.abyss_min_stage and pending > 0,
+		"run_best": run_best,
+		"pending_marks": pending,
+		"marks_after": marks + pending,
+		"max_vault_slots_after": balance.get_vault_slot_count(marks + pending),
+		"extractable_affix_ids": collect_extractable_affix_ids(),
+		"legacy_debt_added_minutes": wallet.get_prestige_legacy_minutes(maxi(1, current_stage), balance)
+	}
 ## 灵魂转生预览（只读）：可获灵魂、转生后灵魂储备、未还债务将折算的宿债时长、保留装备数 (§1.4、Q19、Q35)
 func get_soul_prestige_preview() -> Dictionary:
 	var gain_log: float = balance.get_pending_souls_log(run_best, marks)
@@ -382,12 +613,14 @@ func perform_soul_prestige() -> float:
 ## 执行第二层深渊印记转生：结算宿债、累加印记、萃取威能、清空装备/灵魂/金币 (§1.5 & Q20 & Q35)
 func perform_abyss_prestige(extract_power_id: String = "") -> int:
 	var earned_marks: int = balance.get_pending_marks(all_time_best)
+	var extractable: Array[String] = collect_extractable_affix_ids()   # 必须在清空装备前收集
 	_settle_unpaid_debt_to_legacy()
 
 	marks += earned_marks
-	if not extract_power_id.is_empty() and not vault_powers.has(extract_power_id):
-		var max_vault: int = balance.get_vault_slot_count(marks)
-		if vault_powers.size() < max_vault:
+	# 卡奈式萃取：只能萃取当前持有的暗金/太古装备上的专属词条，永久进入解锁池并自动装配到空闲威能槽
+	if not extract_power_id.is_empty() and extractable.has(extract_power_id) and not unlocked_vault_powers.has(extract_power_id):
+		unlocked_vault_powers.push_back(extract_power_id)
+		if not vault_powers.has(extract_power_id) and vault_powers.size() < get_max_vault_slots():
 			vault_powers.push_back(extract_power_id)
 
 	souls = NumScript.ZERO
@@ -395,7 +628,7 @@ func perform_abyss_prestige(extract_power_id: String = "") -> int:
 	inventory.clear()
 	prestige_count += 1
 	_reset_run_progress(false)
-	recalculate_stats()
+	equip_slots.recalculate_and_apply(self)   # 重建威能槽监听器并重算面板
 	return earned_marks
 
 func _settle_unpaid_debt_to_legacy() -> void:
@@ -423,6 +656,14 @@ func _reset_run_progress(_keep_equipped: bool) -> void:
 	mob_shield_max_log = NumScript.ZERO
 	mob_shield_cur_log = NumScript.ZERO
 	mob_shield_strip_cap_log = NumScript.ZERO
+	backlash_stacks = 0.0
+	stun_remaining_sec = 0.0
+	boss_clone_triggered = false
+	boss_clones_remaining = 0
+	recent_income_per_sec_log = NumScript.ZERO
+	_reset_mech_attempt_stats()
+	signals.clear_signal(SignalsScript.Kind.WALL_HINT)
+	signals.clear_signal(SignalsScript.Kind.PRESTIGE_READY)
 	buffs.clear()
 	upgrades.reset_levels()
 
@@ -443,6 +684,8 @@ func get_hash_parts() -> PackedStringArray:
 		gold, debt_total, legacy_debt_minutes, toll_escrow, souls, marks
 	])
 	parts.append("vault:%s" % ",".join(vault_powers))
+	if not unlocked_vault_powers.is_empty():
+		parts.append("vault_pool:%s" % ",".join(unlocked_vault_powers))
 	parts.append("gate:%d,%s,%s,%d,%d,%.6f" % [
 		paid_gate_tier, str(gate_boss_cleared), str(enforce_toll_gates),
 		prestige_count, tick_count, elapsed_seconds
@@ -472,6 +715,10 @@ func get_hash_parts() -> PackedStringArray:
 			parts.append("eq_%s:null" % slot_key)
 		else:
 			parts.append("eq_%s:%d,%.8f" % [slot_key, eq_item.uid, eq_item.score])
+	if backlash_stacks != 0.0 or stun_remaining_sec != 0.0 or boss_clone_triggered or boss_clones_remaining != 0 or recent_income_per_sec_log != NumScript.ZERO:
+		parts.append("mech:%.8f,%.8f,%s,%d,%.12f" % [backlash_stacks, stun_remaining_sec, str(boss_clone_triggered), boss_clones_remaining, recent_income_per_sec_log])
+	if credit.loan_count > 1 or stats.crit_rate_bonus != 0.0:
+		parts.append("extra:%d,%.8f" % [credit.loan_count, stats.crit_rate_bonus])
 	if mob_shield_max_log != NumScript.ZERO:
 		parts.append("shield:%.12f,%.12f" % [mob_shield_max_log, mob_shield_cur_log])
 	if not tech.researched.is_empty() or research_queue.size() > 0 or credit.tier_bonus > 0:
@@ -522,6 +769,16 @@ func clone() -> SimState:
 	copy.upgrades = upgrades.clone()
 	copy.buffs = buffs.clone()
 	copy.tech = tech.clone()
+	copy.unlocked_vault_powers = unlocked_vault_powers.duplicate()
+	copy.backlash_stacks = backlash_stacks
+	copy.stun_remaining_sec = stun_remaining_sec
+	copy.boss_clone_triggered = boss_clone_triggered
+	copy.boss_clones_remaining = boss_clones_remaining
+	copy.recent_income_per_sec_log = recent_income_per_sec_log
+	copy.mech_absorbed_log = mech_absorbed_log.duplicate()
+	copy.mech_dealt_log = mech_dealt_log
+	copy.passive_totals = passive_totals.duplicate()
+	copy.signals = signals.clone()
 	copy.research_queue = research_queue.clone()
 	copy.mob_shield_max_log = mob_shield_max_log
 	copy.mob_shield_cur_log = mob_shield_cur_log

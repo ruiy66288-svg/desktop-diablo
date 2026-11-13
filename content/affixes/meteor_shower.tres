@@ -1,0 +1,32 @@
+[gd_resource type="Resource" script_class="AffixDef" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://simulation/affix/AffixDef.gd" id="1_aff"]
+[ext_resource type="Script" path="res://simulation/affix/TriggerDef.gd" id="2_trg"]
+[ext_resource type="Script" path="res://simulation/affix/EffectDef.gd" id="3_eff"]
+
+[sub_resource type="Resource" id="Resource_trg"]
+script = ExtResource("2_trg")
+event_type = 5 ; 来源: 02号文件 §2.4 陨石 (SMELT 计数 50) (触发事件类型)
+mode = 1
+threshold = 50
+chance = 1.0
+icd_ticks = 0
+
+[sub_resource type="Resource" id="Resource_eff"]
+script = ExtResource("3_eff")
+vfx_key = "meteor"
+emit_event_type = 6 ; METEOR
+should_emit_event = true
+damage_pct_max_hp = 1.0 ; 来源: 02号文件 §2.4 — 百分比最大生命伤害
+boss_max_hp_pct_scale = 0.25 ; 来源: 02号文件 §2.4 — 深渊 Boss 只吃 25%
+
+[resource]
+script = ExtResource("1_aff")
+id = "meteor_shower"
+name = "陨石"
+desc_template = "每熔炼 50 件，陨石坠落：小怪秒杀，Boss 削 25% 最大生命"
+is_passive = false
+trigger = SubResource("Resource_trg")
+effect = SubResource("Resource_eff")
+budget_per_tick = 4 ; 来源: 02号文件 §2.3 每词条每 tick 预算
+counter_tags = Array[String](["trigger", "burst"]) ; 来源: 02号文件 §6.2 克制标签

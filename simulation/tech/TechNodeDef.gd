@@ -9,6 +9,7 @@ class_name TechNodeDef extends Resource
 @export var tier: int = 1                # 研究时长 T(tier) = 2 分钟 × 2.2^tier (Balance.get_tech_research_seconds)
 @export var cost_gold_log: float = 0.0   # 研究价格 (log10 金币)
 @export var prereq_id: String = ""
+@export var requires_marks: int = 0       # 深渊印记解锁门槛 (§5.3：深渊印记解锁第 5 层以后的深层节点)
 @export var effect_key: String = ""      # additive_pct / crit_rate / income_mult_pct / credit_tier_bonus / drop_qty_bonus / auto_buy_atk
 @export var effect_val: float = 0.0
 @export var desc: String = ""

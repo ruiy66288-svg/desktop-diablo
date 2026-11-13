@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="AffixDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://simulation/affix/AffixDef.gd" id="1_aff"]
+
+[resource]
+script = ExtResource("1_aff")
+id = "deadly_precision"
+name = "致命宿命"
+desc_template = "暴击率 +15%，暴击伤害 +0.5 倍"
+is_passive = true
+stat_key = "crit_rate"
+stat_val = 0.15 ; 来源: 02号文件 §6.2 克制只吃暴击
+extra_stats = {
+"crit_mult": 0.5
+}
+counter_tags = Array[String](["crit"]) ; 来源: 02号文件 §6.2 克制标签

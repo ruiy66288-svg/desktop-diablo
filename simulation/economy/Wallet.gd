@@ -42,7 +42,7 @@ func spend(cost_log: float) -> bool:
 
 ## 申请信贷借款 (§5.2 & Q26 浮动溢价 1.1 + 0.5*u^2)
 func borrow(borrow_amount_log: float, stage: int, balance: BalanceScript) -> bool:
-	if credit.active_loan:
+	if credit.loan_count >= credit.get_max_concurrent_loans(balance):
 		return false
 
 	var preview: Dictionary = credit.preview_borrow(stage, borrow_amount_log, balance)
@@ -52,6 +52,7 @@ func borrow(borrow_amount_log: float, stage: int, balance: BalanceScript) -> boo
 	var repay_total_log: float = float(preview["repayment_total_log"])
 	gold = NumScript.add(gold, borrow_amount_log)
 	debt_total = NumScript.add(debt_total, repay_total_log)
+	credit.loan_count += 1
 	credit.active_loan = true
 	credit.borrowed_principal_log = borrow_amount_log
 	return true
@@ -67,6 +68,7 @@ func repay_with_gold(amount_log: float) -> float:
 		debt_total = NumScript.ZERO
 		if credit.active_loan:
 			credit.active_loan = false
+			credit.loan_count = 0
 			credit.credit_tier += 1
 	else:
 		debt_total = NumScript.sub(debt_total, pay_log)
@@ -90,6 +92,7 @@ func add_income(amount_log: float, balance: BalanceScript, stage: int = 1, save_
 				debt_total = NumScript.ZERO
 				if credit.active_loan:
 					credit.active_loan = false
+					credit.loan_count = 0
 					credit.credit_tier += 1
 			else:
 				debt_total = NumScript.sub(debt_total, repay_log)
@@ -123,6 +126,7 @@ func settle_prestige_debt_to_legacy(stage: int, balance: BalanceScript) -> float
 	legacy_debt_minutes += get_prestige_legacy_minutes(stage, balance)
 	debt_total = NumScript.ZERO
 	credit.active_loan = false
+	credit.loan_count = 0
 	credit.borrowed_principal_log = NumScript.ZERO
 	return legacy_debt_minutes
 

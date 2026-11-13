@@ -1,7 +1,7 @@
 class_name TechTree extends RefCounted
 
 ## 科技树 (依据《02_系统架构与数值_v6.md》§5.3、Q27–Q28 与《00_开发执行总纲.md》WP-14)
-## 原型 6 个节点（战斗2 / 经济2 / 信贷1 / 自动化1）；永不随转生重置；节点数据在 res://content/tech/*.tres
+## 12 个节点（战斗/经济/信贷/自动化 各 3 个；tier>=5 的深层节点需深渊印记解锁, §5.3）；永不随转生重置；节点数据在 res://content/tech/*.tres
 
 const TechNodeDefScript = preload("res://simulation/tech/TechNodeDef.gd")
 const BalanceScript = preload("res://simulation/Balance.gd")
@@ -12,7 +12,13 @@ const NODE_PATHS: Array[String] = [
 	"res://content/tech/eco_scavenger.tres",
 	"res://content/tech/eco_drops.tres",
 	"res://content/tech/credit_line.tres",
-	"res://content/tech/auto_upgrade.tres"
+	"res://content/tech/auto_upgrade.tres",
+	"res://content/tech/combat_mastery.tres",
+	"res://content/tech/eco_golden.tres",
+	"res://content/tech/credit_dual_loan.tres",
+	"res://content/tech/credit_discount.tres",
+	"res://content/tech/offline_cap_24h.tres",
+	"res://content/tech/auto_repay.tres"
 ]
 
 var defs: Dictionary = {}

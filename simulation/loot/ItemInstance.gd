@@ -5,6 +5,7 @@ class_name ItemInstance extends RefCounted
 
 const NumScript = preload("res://core/num/Num.gd")
 const BalanceScript = preload("res://simulation/Balance.gd")
+const AffixDefScript = preload("res://simulation/affix/AffixDef.gd")
 
 enum Rarity {
 	WHITE = 0,   # 白装 (普通)
@@ -87,6 +88,24 @@ func calc_score(p_balance: BalanceScript = null) -> float:
 	var mult_val: float = NumScript.from_float(unique_mult) if unique_mult > 1.0 else 0.0
 	score = rarity_val + ilvl_val + atk_val + mult_val
 	return score
+
+## 本装备词条覆盖的克制标签（去重，供卡墙克制高亮, §7.2）
+func get_counter_tags() -> Array[String]:
+	var tags: Array[String] = []
+	for a: Variant in affixes:
+		if a is AffixDefScript:
+			for t: String in (a as AffixDefScript).counter_tags:
+				if not tags.has(t):
+					tags.push_back(t)
+	return tags
+
+## 是否克制给定机制标签集合（任一命中即克制）
+func counters(counter_tags_needed: Array[String]) -> bool:
+	var mine: Array[String] = get_counter_tags()
+	for t: String in counter_tags_needed:
+		if mine.has(t):
+			return true
+	return false
 
 func clone() -> ItemInstance:
 	var copy: ItemInstance = (get_script() as GDScript).new(

@@ -31,4 +31,5 @@ desc_template = "暴击触发连锁闪电，对排队目标造成溅射伤害"
 is_passive = false
 trigger = SubResource("Resource_trg")
 effect = SubResource("Resource_eff")
+counter_tags = Array[String](["chain", "splash"]) ; 来源: 02号文件 §6.2 克制标签
 budget_per_tick = 8 ; 来源: 02号文件 §2.3 — 每词条每 tick 预算

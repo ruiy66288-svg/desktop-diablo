@@ -55,6 +55,9 @@ func clear_listeners() -> void:
 	_listeners.clear()
 	_listeners_by_type.clear()
 
+func has_listener_for(ev_type: int) -> bool:
+	return _listeners_by_type.has(ev_type)
+
 func has_listeners() -> bool:
 	return not _listeners.is_empty()
 
